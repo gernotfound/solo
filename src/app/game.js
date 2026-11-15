@@ -22,7 +22,7 @@ const daylightAt=createDaylightSampler(),scheduler=createFrameScheduler();
 const terrainCache=createTerrainCache((tileCtx,tileView)=>{
  const background=createSceneryRenderer(tileCtx,state,worldData);
  background.land(tileView);background.drawRoads(tileView);background.drawRoadDetails(tileView);
-});
+},{tileSize:768});
 let facing=state.face||0,step=0,moving=false,camX=state.x,camY=state.y,vw=1,vh=1,dpr=1,zoom=1,frame=0,last=0,panel=null,activeTarget=null;
 const keys=new Set(),stickVec={x:0,y:0};let touchRun=false,stickPointer=null,toastingUntil=0,lastAttack=0;
 function drawPlayer(){drawPlayerSprite(ctx,state,{facing,moving,step})}

@@ -35,3 +35,5 @@ Gli oggetti lasciati dall'inventario compaiono sul terreno e possono essere racc
 ## Prestazioni
 
 Il terreno statico viene riutilizzato tramite tessere Canvas LRU (budget massimo di 24 MiB). Le strade fuori dalla visuale sono escluse dal disegno; le interrogazioni di vicinanza usano un indice di segmenti. La luce naturale viene calcolata al massimo una volta al secondo, e durante l'apertura dei menu il mondo è ridisegnato meno frequentemente. Il salvataggio automatico è temporizzato, ma ogni interazione continua a salvarsi subito. I benchmark Node confrontano la nuova geometria con quella precedente; per verificare gli FPS reali sono necessarie prove su dispositivi reali.
+
+**Profilazione browser:** dopo `npm run build`, eseguire `npm run profile:browser`. Il profilo salva un JSON in `artifacts/performance/chromium.json` e viene eseguito anche da GitHub Actions con artifact scaricabile. Vedere [PERFORMANCE.md](docs/PERFORMANCE.md) per scenari, interpretazione delle misure e limiti.

@@ -73,7 +73,7 @@ La build statica autonoma viene generata da `npm run build` ed è distribuita tr
 - La generazione dei contenuti deve preservare ID, coordinate, specie animali e collisioni della versione precedente. La creazione dell'indice stradale è successiva alla generazione, per non alterarne la sequenza deterministica.
 - `fastRoadDist(x,y,limit)` restituisce la distanza esatta **entro la soglia**; al di fuori restituisce `Infinity`. Usarlo solo per interrogazioni di prossimità, non per misure assolute o mappe di distanza.
 - `inWater` deve essere equivalente alla classificazione precedente anche presso i ponti. La query anticipata su rettangoli del fiume evita distanze inutili.
-- La cache Canvas contiene solo sfondo statico. Se il numero di tessere visibili supera 24 MiB stimati, si usa il rendering diretto, senza espulsione/ricostruzione continua.
+- La cache Canvas contiene solo sfondo statico. Se il numero di tessere visibili supera 24 MiB stimati, si usa il rendering diretto, senza espulsione/ricostruzione continua. La dimensione delle tessere del gioco è impostata a 768 unità dopo confronto prestazionale con 512; il renderer deve mantenere continuità grafica e cache sotto il limite su desktop/mobile.
 - L'illuminazione rimane basata sull'orologio reale (campionamento una volta al secondo). Con overlay aperto si riduce soltanto la frequenza di disegno, non il tempo reale.
 - Ogni operazione che modifica inventario, risorse, oggetti a terra o posizioni importanti continua a salvare subito; il salvataggio periodico è ogni 10 s anziché dipendere dagli FPS.
 - Il benchmark Node confronta gli algoritmi con la stessa geometria; non è una misura di FPS reali né della memoria del browser. Test browser e profilazione su Safari/iPhone restano necessari.

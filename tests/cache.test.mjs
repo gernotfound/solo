@@ -71,3 +71,17 @@ test('a tile boundary does not load an invisible extra tile',()=>{
  assert.equal(c.draw(ctx,{l:0,t:0,r:512,b:512},1),true);
  assert.equal(c.tileCount,1);
 });
+
+test('768-unit game tiles cover a desktop viewport with fewer bitmaps inside budget',()=>{
+ const {c,ctx,buffers,painted}=fixture({tileSize:768});
+ assert.equal(c.draw(ctx,{l:0,t:0,r:1280,b:720},1),true);
+ assert.equal(c.tileCount,2);
+ assert.equal(c.stats.tilesBuilt,2);
+ assert.equal(c.cachedBytes,2*768*768*4);
+ assert.ok(buffers.every(b=>b.width===768&&b.height===768));
+ assert.deepEqual(painted[1].args,[768,0,768,768]);
+ assert.equal(c.draw(ctx,{l:760,t:0,r:2040,b:720},1),true);
+ assert.equal(c.stats.tilesBuilt,3);
+ assert.equal(c.stats.tilesReused,2);
+ assert.ok(c.cachedBytes<=24*1024*1024);
+});

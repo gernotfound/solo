@@ -10,7 +10,8 @@
     "build": "node scripts/build.mjs",
     "test:browser": "python tests/browser.py",
     "verify": "npm run check && npm test && npm run build && npm run test:browser",
-    "benchmark": "node scripts/benchmark.mjs"
+    "benchmark": "node scripts/benchmark.mjs",
+    "profile:browser": "python tests/profile_browser.py"
   },
   "engines": {
     "node": ">=22"
