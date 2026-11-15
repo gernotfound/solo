@@ -10,6 +10,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   domain-and-browser:
+    name: Canonical Verification
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     env:
