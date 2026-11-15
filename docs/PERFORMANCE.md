@@ -82,11 +82,15 @@ di spostamento, geometria e budget di 24 MiB.
 | 512 unità | #43738016366 | 57,3 | 26,1 ms | 78 | 60 |
 | 512 unità | #43738391530 | 56,2 | 31,9 ms | 78 | 60 |
 | 768 unità | #43738677026 | 58,4 | 20,7 ms | 45 | 60 |
+| 768 unità | #43739025957 | 55,7 | 27,9 ms | 45 | 60 |
 
-La riduzione delle tessere (78 → 45) è strutturale; il guadagno sul
-tempo p95 è **indicativo** e deve essere confermato su ulteriori esecuzioni.
-Conservare la configurazione da 768 soltanto se i test completi continuano
-a passare e le misure restano coerenti. Non trasferire questi FPS a iOS.
+La riduzione delle tessere (78 → 45, circa **42%**) si ripete in entrambe
+le prove. La CPU p95 è minore in ciascun confronto (26,1 → 20,7 ms;
+31,9 → 27,9 ms); il numero di FPS non migliora sistematicamente,
+perché risente del carico variabile della CI. Tutti i test funzionali
+sono passati nelle prove con 768 unità. La scelta da 768 è mantenuta
+per il minor numero di rasterizzazioni, senza promettere un incremento
+stabile degli FPS né estendere i risultati a iOS.
 
 ## Interpretazione
 
