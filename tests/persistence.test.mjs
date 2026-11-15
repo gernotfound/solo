@@ -20,3 +20,16 @@ test('salvataggi guasti e archiviazione non accessibile non impediscono l’avvi
 test('azzeramento esplicito cancella tutte le versioni del solo gioco',()=>{
  const store=storage({[SAVE_KEY]:'x',[LEGACY_KEYS[0]]:'y',[LEGACY_KEYS[1]]:'z',otherGame:'preserve'});resetState(store);assert.deepEqual(store.keys(),['otherGame']);
 });
+
+test('salvataggio in regioni ampliate conserva coordinate, segnaposto e nuove testimonianze',()=>{
+ const store=storage(),s=initialState();
+ s.x=16000;s.y=12600;s.marker={x:20600,y:14200};s.found=[0,7,20,28,20];
+ assert.equal(saveState(store,s,1234567),true);
+ const restored=loadState(store);
+ assert.equal(restored.x,16000);assert.equal(restored.y,12600);
+ assert.deepEqual(restored.marker,{x:20600,y:14200});
+ assert.deepEqual(restored.found,[0,7,20,28]);
+ const corrupt={...s,x:999999999,y:-111,marker:{x:Infinity,y:1}};
+ const checked=loadState(storage({[SAVE_KEY]:JSON.stringify(corrupt)}));
+ assert.equal(checked.x,22375);assert.equal(checked.y,25);assert.equal(checked.marker,null);
+});

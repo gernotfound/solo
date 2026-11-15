@@ -121,4 +121,26 @@ class BrowserTests(unittest.TestCase):
   page.locator('button[data-act="marker-clear"]').click()
   self.assertIsNone(page.evaluate("JSON.parse(__store.get('solo-save-v1')).marker"))
 
+ def test_extended_region_stories_and_atlas(self):
+  state={**DEFAULT,'x':11800,'y':1900}
+  page,errors=self.boot(state)
+  self.assertEqual(page.locator('#zone').inner_text(),'IL PORTO DELLA NEBBIA')
+  page.click('#map-btn')
+  self.assertTrue(page.locator('#bigmap').is_visible())
+  self.assertGreaterEqual(page.locator('article.journal-card').count(),18)
+  self.assertIn('Le navi partirono senza equipaggio',page.locator('#panel-content').inner_text())
+  page.locator('button[data-act="waypoint"][data-id="costa"]').click()
+  saved=page.evaluate("JSON.parse(__store.get('solo-save-v1'))")
+  self.assertEqual(saved['marker'],{'x':20600,'y':14200})
+  self.assertFalse(errors)
+
+ def test_distant_region_and_local_minimap(self):
+  state={**DEFAULT,'x':16000,'y':12600}
+  page,errors=self.boot(state,viewport=(390,844),touch=True)
+  self.assertEqual(page.locator('#zone').inner_text(),'LA CASERMA MUTA')
+  self.assertTrue(page.locator('#stick').is_visible())
+  self.assertTrue(page.evaluate('document.getElementById("mini").width>0'))
+  self.assertGreater(page.evaluate('window.__survivalStatus.x'),10000)
+  self.assertFalse(errors)
+
 if __name__=='__main__': unittest.main(verbosity=2)
