@@ -37,3 +37,13 @@ jobs:
           python -m playwright install --with-deps chromium
       - name: Gameplay in Chromium
         run: python tests/browser.py
+      - name: Browser frame-time profiling in Chromium
+        run: npm run profile:browser
+      - name: Upload browser performance diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: solo-browser-performance
+          path: artifacts/performance/chromium.json
+          if-no-files-found: ignore
+          retention-days: 14
