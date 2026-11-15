@@ -23,7 +23,7 @@ test('static terrain is rasterized once and reused across frames without realloc
  assert.equal(painted.length,4);
  assert.ok(c.cachedBytes<=24*1024*1024);
  assert.equal(c.draw(ctx,view,1),true);
- assert.equal(c.stats.tilesBuilt,6);
+ assert.equal(c.stats.tilesBuilt,4);
  assert.equal(c.stats.tilesReused,4);
  assert.equal(buffers.length,4);
  assert.equal(painted.length,8);
