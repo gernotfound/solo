@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#182b24">
+<meta name="description" content="SoLo: mondo post-apocalittico aperto. Esplora senza missioni obbligatorie, costruisci, coltiva e sopravvivi.">
+<title>SoLo — Esplorazione libera</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<canvas id="game" aria-label="Gioco di sopravvivenza con vista dall'alto"></canvas>
+<div id="vignette"></div>
+<header class="hud" aria-label="Stato del sopravvissuto">
+  <div class="hud-left">
+    <div class="brand"><span class="brand-mark">◈</span><div><span class="eyebrow">UN MONDO VUOTO · OGNI GIORNO UNA STORIA</span><strong>SoLo</strong></div></div>
+    <div class="stats">
+      <div class="stat" title="Salute"><span class="stat-symbol">♥</span><div class="track"><i id="bar-health"></i></div><b id="val-health">100</b></div>
+      <div class="stat" title="Fame"><span class="stat-symbol">◕</span><div class="track"><i id="bar-hunger"></i></div><b id="val-hunger">84</b></div>
+      <div class="stat" title="Sete"><span class="stat-symbol">◈</span><div class="track"><i id="bar-thirst"></i></div><b id="val-thirst">78</b></div>
+      <div class="stat" title="Resistenza"><span class="stat-symbol">ϟ</span><div class="track"><i id="bar-stamina"></i></div><b id="val-stamina">100</b></div>
+      <div class="stat" title="Calore corporeo"><span class="stat-symbol">☀</span><div class="track"><i id="bar-warmth"></i></div><b id="val-warmth">100</b></div>
+    </div>
+  </div>
+  <div class="hud-middle"><span id="zone">BOSCO DEL RITORNO</span><div id="clockline"><span id="sunicon">☀</span> <b id="clock">--:--</b><small id="dayname">ORA LOCALE</small></div></div>
+  <div class="hud-right"><canvas id="mini" width="300" height="220" role="button" tabindex="0" aria-label="Apri mappa"></canvas><button id="map-btn" class="tiny" aria-label="Apri mappa">⌖</button></div>
+</header>
+
+<div id="proximity" aria-live="polite"></div>
+<div class="action-controls">
+  <button id="interact" class="main-action" aria-label="Interagisci"><span id="interact-icon">✦</span><strong id="interact-label">ESAMINA</strong></button>
+  <button id="attack" class="attack" aria-label="Attacca con arma equipaggiata"><span>⚔</span>ATTACCA</button>
+</div>
+<div id="controls"><div id="stick" aria-label="Joystick movimento" role="group"><div id="nub"></div></div><button id="run" aria-label="Corri tenendo premuto">CORRI <span>»</span></button></div>
+<nav class="quickbar" aria-label="Azioni del gioco">
+  <button data-tab="inventory" id="bag-short"><span>▦</span><b>INVENTARIO</b><small>I</small></button>
+  <button data-tab="craft" id="craft-short"><span>⚒</span><b>CRAFTING</b><small>C</small></button>
+  <button data-tab="equipment" id="gear-short"><span>♙</span><b>EQUIPAG.</b><small>G</small></button>
+  <button data-tab="guide" id="help-short"><span>?</span><b>GUIDA</b><small>H</small></button>
+</nav>
+<div id="toast" role="status" aria-live="polite"></div>
+<div id="desktop-tip">WASD muovi · SHIFT corri · E interagisci · SPAZIO attacca · I inventario · C crafting · M mappa</div>
+<section id="overlay" class="hidden" role="dialog" aria-modal="true" aria-label="Menu di sopravvivenza">
+  <div class="modalbox"><div class="modal-heading"><div><span class="eyebrow">IL TUO MONDO</span><h2 id="panel-title">Inventario</h2></div><button id="close" aria-label="Chiudi menu">×</button></div>
+    <div class="tabs" role="tablist" aria-label="Sezioni"><button data-tab="inventory">ZAINO</button><button data-tab="craft">CREA</button><button data-tab="equipment">INDOSSA</button><button data-tab="map">MAPPA</button><button data-tab="guide">GUIDA</button></div>
+    <div id="panel-content"></div>
+  </div>
+</section>
+<script type="module" src="/src/app/game.js"></script>
+</body>
+</html>
