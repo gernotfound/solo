@@ -1,6 +1,7 @@
 import {clamp,DEFAULT_POSITION} from '../domain/index.js';
 import {MAP_WIDTH,MAP_HEIGHT,REGIONS,EXTRA_TOWNS,EXTRA_WATERS,buildExpansion,regionAt} from './expansion.js';
 import {createSpatialIndex} from './spatial.js';
+import {createRoadIndex} from './roads.js';
 export const W=MAP_WIDTH,H=MAP_HEIGHT,TAU=Math.PI*2;
 const LEGACY_W=6400,LEGACY_H=4800;
 const hypot=(x,y,a,b)=>Math.hypot(x-a,y-b);
@@ -44,7 +45,18 @@ function woods(x,y){let v=-1;for(const f of forest){const t=((x-f.x)/f.rx)**2+((
 function inCity(x,y){return x>3010&&x<5910&&y>970&&y<3440||townGrids.some(g=>x>g.x&&x<g.x+g.w&&y>g.y&&y<g.y+g.h)}
 function inField(x,y){return fields.some(f=>x>f.x&&x<f.x+f.w&&y>f.y&&y<f.y+f.h)}
 function inLake(x,y,shape){return((x-shape.x)/shape.rx)**2+((y-shape.y)/shape.ry)**2<.88}
-function inWater(x,y){return waterBodies.some(body=>inLake(x,y,body))||(pathDist(x,y,river)<49 && roadDist(x,y)>34)}
+// Prima di calcolare le distanze escludiamo i punti esterni ai rettangoli
+// dei singoli segmenti. La soglia di 49 unità resta esattamente invariata.
+const riverSegments=river.slice(1).map((b,i)=>{
+ const a=river[i];return {a,b,minX:Math.min(a[0],b[0])-49,maxX:Math.max(a[0],b[0])+49,minY:Math.min(a[1],b[1])-49,maxY:Math.max(a[1],b[1])+49};
+});
+let roadIndex=null;
+function fastRoadDist(x,y,limit=160){return roadIndex?roadIndex.distanceWithin(x,y,limit):roadDist(x,y)}
+function nearRiver(x,y){for(const s of riverSegments)if(x>=s.minX&&x<=s.maxX&&y>=s.minY&&y<=s.maxY&&segDist(x,y,s.a,s.b)<49)return true;return false}
+function inWater(x,y){
+ if(waterBodies.some(body=>inLake(x,y,body)))return true;
+ return nearRiver(x,y)&&fastRoadDist(x,y,34)>34;
+}
 let legacyGeneration=true;
 function blocked(x,y,r=20){if(x<40||x>(legacyGeneration?LEGACY_W:W)-40||y<40||y>(legacyGeneration?LEGACY_H:H)-40||inWater(x,y))return true;
  if(roadDist(x,y)<r+9||cityRoadDist(x,y)<r+9)return true;
@@ -108,11 +120,12 @@ legacyGeneration=false;
 townGrids.push(...EXTRA_TOWNS);
 waterBodies.push(...EXTRA_WATERS);
 buildExpansion({addWorld,blocked,forest,fields,routes,locations,wildlife,savedState});
+roadIndex=createRoadIndex(routes);
 world.sort((a,b)=>a.depth-b.depth);
 const allObjects=createSpatialIndex(world);
 const allInteractive=createSpatialIndex(interactables);
 const allBuildings=createSpatialIndex(buildings);
-return {world,buildings,interactables,wildlife,ambient,random,rand,randInt,hash,forest,fields,lake,pond,waterBodies,townGrids,regions:REGIONS,regionAt,river,routes,gx,gy,locations,segDist,pathDist,roadDist,cityRoadDist,woods,inCity,inField,inLake,inWater,blocked,
+return {world,buildings,interactables,wildlife,ambient,random,rand,randInt,hash,forest,fields,lake,pond,waterBodies,townGrids,regions:REGIONS,regionAt,river,routes,gx,gy,locations,segDist,pathDist,roadDist,fastRoadDist,roadIndex,cityRoadDist,woods,inCity,inField,inLake,inWater,blocked,
  queryWorld:(l,t,r,b)=>allObjects.query(l,t,r,b),
  queryInteractables:(l,t,r,b)=>allInteractive.query(l,t,r,b),
  queryBuildings:(l,t,r,b)=>allBuildings.query(l,t,r,b),

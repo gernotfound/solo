@@ -1,9 +1,11 @@
-import {ITEMS,RECIPES,SLOTS,SLOT_NAMES,DEFAULT_POSITION,initialState,sanitizeState,clamp,quantity,carriedWeight,carryCapacity,addItem,removeItem,canCraft,craft,equip,consume,daylight,solarHours,timeText,statEffects,dropToGround,pickupGroundItem} from '../domain/index.js'
+import {ITEMS,RECIPES,SLOTS,SLOT_NAMES,DEFAULT_POSITION,initialState,sanitizeState,clamp,quantity,carriedWeight,carryCapacity,addItem,removeItem,canCraft,craft,equip,consume,daylight,solarHours,timeText,statEffects,dropToGround,pickupGroundItem,createDaylightSampler} from '../domain/index.js'
 import {createWorld,W,H,TAU} from '../world/world.js'
 import {createSceneryRenderer} from '../render/scenery.js'
 import {createAtlasRenderer} from '../render/atlas.js'
 import {drawPlayerSprite} from '../render/player.js'
 import {loadState,saveState,resetState} from '../domain/persistence.js';
+import {createFrameScheduler} from './scheduler.js';
+import {createTerrainCache} from '../render/cache.js';
 
 const $=id=>document.getElementById(id),canvas=$('game'),ctx=canvas.getContext('2d',{alpha:false}),mini=$('mini'),mc=mini.getContext('2d'),overlay=$('overlay'),content=$('panel-content');
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -16,6 +18,11 @@ const worldData=createWorld(state);
 const {world,buildings,interactables,wildlife,ambient,random,rand,randInt,hash,forest,fields,lake,pond,river,routes,gx,gy,locations,pathDist,roadDist,cityRoadDist,woods,inCity,inField,inLake,inWater,blocked,queryWorld,queryBuildings,queryInteractables,regionAt,regions}=worldData;
 const {ell,rect,path,land,drawRoads,drawRoadDetails,drawObject}=createSceneryRenderer(ctx,state,worldData);
 const mapDraw=createAtlasRenderer(worldData,state);
+const daylightAt=createDaylightSampler(),scheduler=createFrameScheduler();
+const terrainCache=createTerrainCache((tileCtx,tileView)=>{
+ const background=createSceneryRenderer(tileCtx,state,worldData);
+ background.land(tileView);background.drawRoads(tileView);background.drawRoadDetails(tileView);
+});
 let facing=state.face||0,step=0,moving=false,camX=state.x,camY=state.y,vw=1,vh=1,dpr=1,zoom=1,frame=0,last=0,panel=null,activeTarget=null;
 const keys=new Set(),stickVec={x:0,y:0};let touchRun=false,stickPointer=null,toastingUntil=0,lastAttack=0;
 function drawPlayer(){drawPlayerSprite(ctx,state,{facing,moving,step})}
@@ -43,7 +50,8 @@ function drawWaypoint(){if(!state.marker)return;const dx=state.marker.x-state.x,
 function drawScene(t){ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle='#b7b38d';ctx.fillRect(0,0,vw,vh);
  ctx.translate(vw/2,vh/2);ctx.scale(zoom,zoom);ctx.translate(-camX,-camY);
  const pad=95,l=camX-vw/(2*zoom)-pad,r=camX+vw/(2*zoom)+pad,tp=camY-vh/(2*zoom)-pad,b=camY+vh/(2*zoom)+pad,view={l:clamp(l,0,W),r:clamp(r,0,W),t:clamp(tp,0,H),b:clamp(b,0,H)};
- land(view);drawRoads();drawRoadDetails(view);drawGroundItems(l,tp,r,b);
+ if(!terrainCache.draw(ctx,view,zoom*dpr)){land(view);drawRoads(view);drawRoadDetails(view)}
+ drawGroundItems(l,tp,r,b);
  let drawn=false;
  for(const o of queryWorld(l-90,tp-90,r+90,b+90).sort((a,b)=>a.depth-b.depth)){if(!drawn&&o.depth>state.y){drawPlayer(t);drawn=true}
  if(o.kind==='house'){if(o.x+o.w<l||o.x>r||o.y+o.h<tp||o.y>b)continue}
@@ -217,7 +225,7 @@ function resize(){vw=innerWidth;vh=innerHeight;dpr=Math.min(devicePixelRatio||1,
 }
 window.addEventListener('resize',resize,{passive:true});resize();
 // Il buio è disegnato su un livello separato: la maschera luminosa non cancella il mondo sottostante.
-function drawLighting(){const sun=daylight(new Date()),dark=(1-sun)*.78;if(dark<.025)return;
+function drawLighting(){const sun=daylightAt(new Date()),dark=(1-sun)*.78;if(dark<.025)return;
  lightCtx.setTransform(dpr,0,0,dpr,0,0);lightCtx.clearRect(0,0,vw,vh);lightCtx.fillStyle=`rgba(9,24,36,${dark})`;lightCtx.fillRect(0,0,vw,vh);lightCtx.globalCompositeOperation='destination-out';
  const torch=state.equipment.hand==='torch',radius=(torch?350:177)*Math.max(.72,zoom),sx=vw/2,sy=vh/2;
  const g=lightCtx.createRadialGradient(sx,sy,18,sx,sy,radius);g.addColorStop(0,'rgba(255,255,255,.98)');g.addColorStop(.35,'rgba(255,255,255,.84)');g.addColorStop(1,'rgba(255,255,255,0)');lightCtx.fillStyle=g;lightCtx.fillRect(sx-radius,sy-radius,radius*2,radius*2);
@@ -236,8 +244,9 @@ function update(dt,t){if(panel)return;let mx=stickVec.x+(keys.has('ArrowRight')|
  const nextX=state.x+mx*speed,nextY=state.y+my*speed;
  if(!isSolid(nextX,state.y))state.x=nextX;if(!isSolid(state.x,nextY))state.y=nextY;step+=dt*(running?8:5);
  }else running=false;
- statEffects(state,dt,{night:1-daylight(new Date()),nearFire:nearFire(),running});
- if(state.equipment.hand==='torch'&&daylight(new Date())<.25){state.condition.torch=(state.condition.torch??ITEMS.torch.durability)-dt/8;if(state.condition.torch<=0){removeItem(state,'torch');state.condition.torch=0;notify('La torcia si è scaricata.')}}
+ const sun=daylightAt(new Date());
+ statEffects(state,dt,{night:1-sun,nearFire:nearFire(),running});
+ if(state.equipment.hand==='torch'&&sun<.25){state.condition.torch=(state.condition.torch??ITEMS.torch.durability)-dt/8;if(state.condition.torch<=0){removeItem(state,'torch');state.condition.torch=0;notify('La torcia si è scaricata.')}}
  if(state.health<=0){dead();return}
  updateAnimals(dt);
  playSeconds+=dt;state.days=playSeconds/86400;
@@ -249,14 +258,18 @@ function update(dt,t){if(panel)return;let mx=stickVec.x+(keys.has('ArrowRight')|
 }
 function zoneAt(x,y){if(x>=6400||y>=4800)return regionAt(x,y).name;if(inCity(x,y))return'LA CITTÀ FANTASMA';if(inField(x,y))return'I CAMPI DI RUGGINE';if(inLake(x,y,lake)||inLake(x,y,pond)||pathDist(x,y,river)<160)return'LE ACQUE PERDUTE';if(woods(x,y)>.18)return'IL BOSCO DEL RITORNO';if(Math.min(roadDist(x,y),cityRoadDist(x,y))<80)return'LA STRADA DELLE CENERI';return'LE TERRE DEL SILENZIO'}
 function updateHud(){for(const id of ['health','hunger','thirst','stamina','warmth']){$('bar-'+id).style.width=`${state[id].toFixed(1)}%`;$('val-'+id).textContent=Math.round(state[id]);}
- $('zone').textContent=zoneAt(state.x,state.y);const now=new Date(),sun=daylight(now);$('clock').textContent=timeText(now);$('sunicon').textContent=sun>.65?'☀':sun>.12?'◒':'☾';$('dayname').textContent=sun>.65?'GIORNO':sun>.12?'CREPUSCOLO':'NOTTE';
+ $('zone').textContent=zoneAt(state.x,state.y);const now=new Date(),sun=daylightAt(now);$('clock').textContent=timeText(now);$('sunicon').textContent=sun>.65?'☀':sun>.12?'◒':'☾';$('dayname').textContent=sun>.65?'GIORNO':sun>.12?'CREPUSCOLO':'NOTTE';
 
 }
-let lastRegion=null,lastMini=0;function frameLoop(t){const dt=Math.min((t-last)/1000||0,.05);last=t;frame++;update(dt,t);drawScene(t);
- // La maschera va applicata dopo il rendering del mondo, separatamente.
- drawLighting();if(t-lastMini>1100){mapDraw(mc,mini.width,mini.height);lastMini=t}
- if(frame%320===0)save();requestAnimationFrame(frameLoop);
+let lastRegion=null;
+function frameLoop(t){
+ const dt=Math.min((t-last)/1000||0,.05);last=t;frame++;
+ update(dt,t);
+ if(scheduler.shouldRender(t,panel!==null)){drawScene(t);drawLighting()}
+ if(scheduler.shouldDrawMinimap(t,panel!==null))mapDraw(mc,mini.width,mini.height);
+ if(scheduler.shouldAutosave(t))save();
+ requestAnimationFrame(frameLoop);
 }
 // Hook diagnostico di sola lettura per smoke test del gioco.
-Object.defineProperty(window,'__survivalStatus',{get:()=>Object.freeze({x:state.x,y:state.y,face:state.face,health:state.health,hunger:state.hunger,thirst:state.thirst,inventory:{...state.inventory},equipment:{...state.equipment},clock:timeText(new Date()),daylight:daylight(new Date()),killed:state.kills,animals:wildlife.filter(a=>a.deadAt===0).length,plots:Object.keys(state.plots).length,ground:state.ground.map(p=>({...p})),looted:Object.keys(state.looted).length,harvested:Object.keys(state.harvested).length,loaded:true})});
+Object.defineProperty(window,'__survivalStatus',{get:()=>Object.freeze({x:state.x,y:state.y,face:state.face,health:state.health,hunger:state.hunger,thirst:state.thirst,inventory:{...state.inventory},equipment:{...state.equipment},clock:timeText(new Date()),daylight:daylight(new Date()),killed:state.kills,animals:wildlife.filter(a=>a.deadAt===0).length,plots:Object.keys(state.plots).length,ground:state.ground.map(p=>({...p})),terrainCache:{...terrainCache.stats,tiles:terrainCache.tileCount,bytes:terrainCache.cachedBytes},looted:Object.keys(state.looted).length,harvested:Object.keys(state.harvested).length,loaded:true})});
 updateHud();notify('Esplora liberamente. Cerca risorse, crea oggetti e costruisci la tua storia.',5200);requestAnimationFrame(frameLoop);

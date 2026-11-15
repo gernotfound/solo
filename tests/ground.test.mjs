@@ -86,7 +86,7 @@ function canvasRecorder(){
  return {ctx,fills};
 }
 test('macchina e casa aperte, bacche esaurite, cassa svuotata e albero tagliato cambiano disegno',()=>{
- const s=initialState(),r=canvasRecorder(),draw=createSceneryRenderer(r.ctx,s,{}).drawObject;
+ const s=initialState(),r=canvasRecorder(),draw=createSceneryRenderer(r.ctx,s,{routes:[]}).drawObject;
  const car={kind:'car',id:'car-demo',x:50,y:50,r:27,rot:0,shade:.2};
  draw(car,0);assert.equal(r.fills.includes('#243a36'),false);
  s.looted[car.id]={items:{},until:Date.now()+40000};r.fills.length=0;

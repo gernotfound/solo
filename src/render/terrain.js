@@ -1,7 +1,7 @@
 // Dettagli ambientali senza stato: per la stessa cella il risultato è stabile,
 // anche dopo riavvii e spostamenti della camera. Si disegnano solo le celle visibili.
 export function drawTerrainFeatures(ctx,world,view){
- const {hash,regionAt,inCity,inField,woods,inWater,roadDist,cityRoadDist}=world;
+ const {hash,regionAt,inCity,inField,woods,inWater,fastRoadDist,cityRoadDist}=world;
  const cell=180,TAU=Math.PI*2;
  const ell=(x,y,rx,ry,color,angle=0)=>{ctx.beginPath();ctx.ellipse(x,y,rx,ry,angle,0,TAU);ctx.fillStyle=color;ctx.fill()};
  const line=(points,color,width)=>{ctx.beginPath();ctx.moveTo(...points[0]);for(let i=1;i<points.length;i++)ctx.lineTo(...points[i]);ctx.strokeStyle=color;ctx.lineWidth=width;ctx.lineCap='round';ctx.stroke()};
@@ -52,7 +52,7 @@ export function drawTerrainFeatures(ctx,world,view){
     ell(21,19,25,10,'#8a8b745b');
    }
    // Segnaletica e margini: vicini alla strada, mai al centro della carreggiata.
-   if(v>.81){const road=Math.min(roadDist(x,y),cityRoadDist(x,y));if(road>12&&road<110){
+   if(v>.81){const road=Math.min(fastRoadDist(x,y,110),cityRoadDist(x,y));if(road>12&&road<110){
     box(-2,-31,4,45,'#626c60');box(-16,-38,32,15,biome==='quarantine'?'#bb815c':'#c3ae79');
     box(-12,-34,24,3,'#f1e0b5');
    }}

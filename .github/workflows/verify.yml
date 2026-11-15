@@ -24,6 +24,8 @@ jobs:
         run: npm run check
       - name: Domain and world tests
         run: npm test
+      - name: Benchmark route and water checks
+        run: npm run benchmark
       - name: Build standalone game
         run: npm run build
       - uses: actions/setup-python@v5
