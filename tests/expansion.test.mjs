@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import {createWorld,W,H} from '../src/world/world.js';
 import {REGIONS,MAP_WIDTH,MAP_HEIGHT,regionAt} from '../src/world/expansion.js';
 import {createSpatialIndex} from '../src/world/spatial.js';
-import {WORLD_STORY_NOTES} from '../src/shared/world-limits.js';
 import {initialState} from '../src/domain/index.js';
 
 test('grande territorio: almeno dodici volte l’area iniziale e undici regioni nuove',()=>{
@@ -13,13 +12,12 @@ test('grande territorio: almeno dodici volte l’area iniziale e undici regioni 
  const world=createWorld(initialState());
  assert.ok(world.world.length>3000);
  assert.equal(world.locations.length,18);
- assert.equal(world.notes.length,WORLD_STORY_NOTES);
  assert.equal(world.world.filter(o=>o.kind==='landmark').length,REGIONS.length);
  assert.ok(world.routes.length>=14);
  assert.ok(world.townGrids.length>=4);
  assert.ok(world.waterBodies.length>=6);
 });
-test('ogni area ha nome, indizi e testimonianze accessibili e non obbligatorie',()=>{
+test('ogni zona ha una geografia e una descrizione, senza oggetti narrativi da raccogliere',()=>{
  const w=createWorld(initialState());
  for(const loc of w.locations){
   assert.ok(loc.name&&loc.story&&loc.clue,loc.id);
@@ -27,7 +25,6 @@ test('ogni area ha nome, indizi e testimonianze accessibili e non obbligatorie',
  }
  for(const r of REGIONS){
   assert.equal(regionAt(r.x,r.y).id,r.id);
-  assert.ok(w.notes.some(n=>n.name.startsWith(r.name)));
   assert.ok(w.world.some(o=>o.kind==='house'&&o.region===r.id)||w.world.some(o=>o.kind==='landmark'&&o.region===r.id),r.id);
  }
  const ids=new Set(w.world.map(o=>o.id));

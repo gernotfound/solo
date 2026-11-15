@@ -46,7 +46,7 @@ export function regionAt(x,y){
   if(d<best){best=d;found=r}}
  return found;
 }
-export function buildExpansion({addWorld,blocked,forest,fields,routes,locations,notes,wildlife,savedState}) {
+export function buildExpansion({addWorld,blocked,forest,fields,routes,locations,wildlife,savedState}) {
  const rand=seed32(0x5b1a773d);
  const between=(a,b)=>a+(b-a)*rand();
  const chance=p=>rand()<p;
@@ -63,8 +63,6 @@ export function buildExpansion({addWorld,blocked,forest,fields,routes,locations,
   const px=r.x,py=r.y;
   locations.push({x:px,y:py,id:r.id,name:r.name,story:r.story,clue:r.clue});
   addWorld({kind:'landmark',style:r.landmark,id:'exp-mark-'+r.id,x:px,y:py,r:64,region:r.id,shade:.5});
-  notes.push({x:px+135,y:py+108,name:r.name+' · testimonianza',text:r.story});
-  notes.push({x:px-205,y:py+135,name:r.name+' · tracce',text:r.clue});
   const blockCount=['harbor','industrial','barracks','town'].includes(r.kind)?8:4;
   for(let i=0;i<blockCount;i++){
    const angle=(i/blockCount)*Math.PI*2+.22,rad=320+(i%3)*127;

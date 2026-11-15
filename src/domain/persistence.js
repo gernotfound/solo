@@ -15,7 +15,6 @@ export function loadState(storage){
  const early=parse(storage,LEGACY_KEYS[1]);
  if(early&&Number.isFinite(early.x)&&Number.isFinite(early.y)){
   const state=initialState();state.x=clamp(early.x,25,6375);state.y=clamp(early.y,25,4775);
-  state.found=Array.isArray(early.found)?[...new Set(early.found.filter(n=>Number.isInteger(n)&&n>=0&&n<7))]:[];
   if(early.marker&&Number.isFinite(early.marker.x)&&Number.isFinite(early.marker.y))state.marker={x:clamp(early.marker.x,0,6400),y:clamp(early.marker.y,0,4800)};
   return state;
  }

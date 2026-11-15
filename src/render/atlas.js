@@ -4,7 +4,7 @@ import {REGIONS} from '../world/expansion.js';
 const PALETTE={asphalt:'#b0a991',harbor:'#a3b2a9',town:'#b6b5a7',industrial:'#a99d8c',highland:'#91a28a',wetland:'#839f94',quarantine:'#ae9c89',orchard:'#aebd87',quarry:'#b7aa91',barracks:'#acae9b',coast:'#b9b4a1'};
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
 export function createAtlasRenderer(world,state){
- const {forest,fields,waterBodies,river,routes,gx,gy,townGrids,locations,notes}=world;
+ const {forest,fields,waterBodies,river,routes,gx,gy,townGrids,locations}=world;
  function draw(c,w,h,full=false){
   const viewW=full?W:3100,viewH=full?H:2350;
   const ox=full?0:clamp(state.x-viewW/2,0,W-viewW),oy=full?0:clamp(state.y-viewH/2,0,H-viewH);
@@ -38,7 +38,6 @@ export function createAtlasRenderer(world,state){
     if(p.story){const label=p.name,cx=clamp(x(p.x),65,w-65),cy=clamp(y(p.y)+15,12,h-8);
      const tw=c.measureText(label).width;c.fillStyle='rgba(29,48,39,.88)';c.fillRect(cx-tw/2-6,cy-8,tw+12,16);c.fillStyle='#f4e6c3';c.fillText(label,cx,cy);}
    }
-   for(let i=0;i<notes.length;i++){const n=notes[i];if(!visible(n.x,n.y))continue;c.fillStyle=state.found.includes(i)?'#75977a':'#e4cb83';c.fillRect(x(n.x)-1.8,y(n.y)-1.8,3.6,3.6)}
   }else{
    for(const p of locations){if(!visible(p.x,p.y))continue;c.beginPath();c.arc(x(p.x),y(p.y),3,0,TAU);c.fillStyle='#f0cc87';c.fill()}
   }
