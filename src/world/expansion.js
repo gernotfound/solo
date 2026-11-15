@@ -1,6 +1,7 @@
 // Gli ampliamenti sono indipendenti dalla sequenza RNG del mondo originale:
 // coordinate e ID persistiti prima della versione 3 non devono cambiare.
-export const MAP_WIDTH=22400,MAP_HEIGHT=16400;
+import {WORLD_WIDTH,WORLD_HEIGHT} from '../shared/world-limits.js';
+export const MAP_WIDTH=WORLD_WIDTH,MAP_HEIGHT=WORLD_HEIGHT;
 export const REGIONS=Object.freeze([
  {id:'evacuazione',name:"IL CORRIDOIO DELL'ESODO",x:7800,y:2700,rx:2100,ry:2300,kind:'asphalt',story:"L'autostrada fu aperta soltanto in uscita. La fila di auto non arrivò mai al valico.",clue:"Cartelli di evacuazione, mezzi in panne e un posto di blocco vuoto.",landmark:'barricade'},
  {id:'porto',name:'IL PORTO DELLA NEBBIA',x:12000,y:1700,rx:2700,ry:2400,kind:'harbor',story:"Le navi partirono senza equipaggio. I registri della dogana hanno ancora le pagine strappate.",clue:'Banchine, magazzini e container tra canali salmastri.',landmark:'crane'},
