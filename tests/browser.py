@@ -163,6 +163,20 @@ class BrowserTests(unittest.TestCase):
   self.assertEqual(saved['inventory']['berry'],12)
   self.assertFalse(errors)
 
+ def test_static_terrain_cache_reuses_tiles_without_affecting_gameplay(self):
+  page,errors=self.boot()
+  page.wait_for_function("window.__survivalStatus.terrainCache.tilesBuilt>0")
+  before=page.evaluate("window.__survivalStatus.terrainCache")
+  page.wait_for_timeout(350)
+  after=page.evaluate("window.__survivalStatus.terrainCache")
+  self.assertGreater(after['tilesReused'],before['tilesReused'])
+  self.assertEqual(after['tilesBuilt'],before['tilesBuilt'])
+  self.assertLessEqual(after['bytes'],24*1024*1024)
+  first=page.evaluate("window.__survivalStatus.x")
+  page.keyboard.down('d');page.wait_for_timeout(350);page.keyboard.up('d')
+  self.assertGreater(page.evaluate("window.__survivalStatus.x"),first+10)
+  self.assertFalse(errors)
+
  def test_distant_region_and_local_minimap(self):
   state={**DEFAULT,'x':16000,'y':12600}
   page,errors=self.boot(state,viewport=(390,844),touch=True)

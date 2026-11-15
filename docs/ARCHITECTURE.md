@@ -21,11 +21,14 @@
 | `src/world/world.js` | Generatore originale preservato, integrazione espansione, collisioni, indice spaziale e API di query. |
 | `src/world/expansion.js` | Nuova geografia e 11 regioni narrative con RNG e ID indipendenti dal mondo legacy. |
 | `src/world/spatial.js` | Griglia per query rettangolari e culling degli oggetti vicini. |
+| `src/world/roads.js` | Indice di segmenti stradali; query a distanza limitata, senza cambiare i risultati geometrici nella soglia richiesta. |
 | `src/render/scenery.js` | Disegno cartoon Canvas del mondo; auto, porte, casse, cespugli e alberi leggono lo stato di raccolta. |
 | `src/render/terrain.js` | Dettagli deterministici e contestuali ai biomi, disegnati solo nelle celle visibili. |
+| `src/render/cache.js` | Tessere raster del terreno statico con invalidazione su scala, LRU e limite di memoria di 24 MiB. |
 | `src/render/player.js` | Silhouette zenitale simmetrica, rotazione del corpo ed equipaggiamento. |
 | `src/render/atlas.js` | Atlante globale e minimappa locale, con contratti geografici condivisi. |
-| `src/app/game.js` | Orchestratore Canvas, input e interazioni col mondo. È il prossimo perimetro da scomporre ulteriormente in sistemi di gameplay, controlli e UI. |
+| `src/app/game.js` | Orchestratore Canvas, input e interazioni col mondo. |
+| `src/app/scheduler.js` | Politiche temporizzate per aggiornamenti di overlay, minimappa e salvataggi. |
 | `scripts/build.mjs` | Converte i moduli ES in un HTML statico autonomo con import map e URL data senza modificare le sorgenti. |
 
 **Flusso dipendenze:** `app` → `domain`/`world`/`render`; `render` → `domain` e dati `world`; `world` → `domain`. Il dominio non conosce né DOM né Canvas né la piattaforma di hosting.
@@ -64,3 +67,13 @@ La mappa è 22.400 × 16.400 unità (11,96 volte l'area iniziale). La generazion
 ## Hosting
 
 La build statica autonoma viene generata da `npm run build` ed è distribuita tramite GitHub Pages. La verifica automatica del progetto deve essere positiva prima della pubblicazione. Non sono richiesti Worker, database, API né servizi esterni per eseguire il gioco; il salvataggio rimane locale e dipende dall'origine del browser.
+
+## Contratto prestazionale
+
+- La generazione dei contenuti deve preservare ID, coordinate, specie animali e collisioni della versione precedente. La creazione dell'indice stradale è successiva alla generazione, per non alterarne la sequenza deterministica.
+- `fastRoadDist(x,y,limit)` restituisce la distanza esatta **entro la soglia**; al di fuori restituisce `Infinity`. Usarlo solo per interrogazioni di prossimità, non per misure assolute o mappe di distanza.
+- `inWater` deve essere equivalente alla classificazione precedente anche presso i ponti. La query anticipata su rettangoli del fiume evita distanze inutili.
+- La cache Canvas contiene solo sfondo statico. Se il numero di tessere visibili supera 24 MiB stimati, si usa il rendering diretto, senza espulsione/ricostruzione continua.
+- L'illuminazione rimane basata sull'orologio reale (campionamento una volta al secondo). Con overlay aperto si riduce soltanto la frequenza di disegno, non il tempo reale.
+- Ogni operazione che modifica inventario, risorse, oggetti a terra o posizioni importanti continua a salvare subito; il salvataggio periodico è ogni 10 s anziché dipendere dagli FPS.
+- Il benchmark Node confronta gli algoritmi con la stessa geometria; non è una misura di FPS reali né della memoria del browser. Test browser e profilazione su Safari/iPhone restano necessari.

@@ -13,6 +13,7 @@ npm run check     # sintassi di tutti i moduli
 npm test          # regole e contratti: Node Test Runner
 npm run build     # crea dist/index.html autonomo
 npm run test:browser  # Playwright Python 1.57 + Chromium; esegue la build generata
+npm run benchmark     # confronto CPU su geometria, non FPS del browser
 ```
 
 Per sviluppo locale servire `index.html` con un server HTTP statico: l'app usa moduli ES nativi. Per la pubblicazione distribuire l’HTML in `dist/`, generato dai moduli versionati.
@@ -30,3 +31,7 @@ La CI [Verify SoLo](.github/workflows/verify.yml) verifica le modifiche a `main`
 ## Mondo reattivo
 
 Gli oggetti lasciati dall'inventario compaiono sul terreno e possono essere raccolti anche dopo un riavvio. Auto, edifici, casse, cespugli e alberi mostrano visivamente se sono già stati perquisiti o raccolti. La figura del personaggio è ridisegnata in vista zenitale; il terreno ha dettagli coerenti con i biomi. Nessun sistema di ricordi collezionabili.
+
+## Prestazioni
+
+Il terreno statico viene riutilizzato tramite tessere Canvas LRU (budget massimo di 24 MiB). Le strade fuori dalla visuale sono escluse dal disegno; le interrogazioni di vicinanza usano un indice di segmenti. La luce naturale viene calcolata al massimo una volta al secondo, e durante l'apertura dei menu il mondo è ridisegnato meno frequentemente. Il salvataggio automatico è temporizzato, ma ogni interazione continua a salvarsi subito. I benchmark Node confrontano la nuova geometria con quella precedente; per verificare gli FPS reali sono necessarie prove su dispositivi reali.

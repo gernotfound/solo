@@ -2,7 +2,9 @@ import {clamp} from '../domain/index.js';
 import {TAU,W,H} from '../world/world.js';
 import {drawTerrainFeatures} from './terrain.js';
 export function createSceneryRenderer(ctx,state,world) {
-const {forest,fields,lake,pond,waterBodies,townGrids,regions,river,routes,gx,gy,locations,hash,woods,inCity,inWater,roadDist,cityRoadDist}=world;
+const {forest,fields,lake,pond,waterBodies,townGrids,regions,river,routes,gx,gy,locations,hash,woods,inCity,inWater,fastRoadDist,cityRoadDist}=world;
+const routeBounds=routes.map(r=>({minX:Math.min(...r.p.map(p=>p[0])),maxX:Math.max(...r.p.map(p=>p[0])),minY:Math.min(...r.p.map(p=>p[1])),maxY:Math.max(...r.p.map(p=>p[1]))}));
+const overlaps=(view,x0,y0,x1,y1,pad=0)=>!view||!(x1+pad<view.l||x0-pad>view.r||y1+pad<view.t||y0-pad>view.b);
 const searched=o=>{const entry=state.looted[o.id];return !!entry&&(!entry.until||entry.until>Date.now())};
 const depleted=o=>(state.harvested[o.id]||0)>Date.now();
 const ell=(x,y,rx,ry,color,rot=0)=>{ctx.beginPath();ctx.ellipse(x,y,rx,ry,rot,0,TAU);ctx.fillStyle=color;ctx.fill()};
@@ -62,20 +64,21 @@ function land(view){
  drawEnvironmentalStory(view);
  drawTerrainFeatures(ctx,world,view);
 }
-function drawRoads(){
- for(const road of routes){path(road.p,road.w+23,'#b8ad8c');path(road.p,road.w+12,'#596b61');path(road.p,road.w,'#797f77');path(road.p,3,'#e4c991',[24,39]);}
+function drawRoads(view){
+ for(let i=0;i<routes.length;i++){const road=routes[i],b=routeBounds[i];if(!overlaps(view,b.minX,b.minY,b.maxX,b.maxY,road.w/2+14))continue;path(road.p,road.w+23,'#b8ad8c');path(road.p,road.w+12,'#596b61');path(road.p,road.w,'#797f77');path(road.p,3,'#e4c991',[24,39]);}
  // City blocks, roads, alleys and faded zebra crossings.
- for(const x of gx){path([[x,1030],[x,3390]],105,'#57685d');path([[x,1030],[x,3390]],92,'#888b83');path([[x,1030],[x,3390]],3,'#e5d4a8',[24,29])}
- for(const y of gy){path([[3020,y],[5900,y]],105,'#57685d');path([[3020,y],[5900,y]],92,'#888b83');path([[3020,y],[5900,y]],3,'#e5d4a8',[24,29])}
- for(const grid of townGrids){for(let x=grid.x;x<=grid.x+grid.w;x+=grid.step){path([[x,grid.y],[x,grid.y+grid.h]],83,'#57685d');path([[x,grid.y],[x,grid.y+grid.h]],70,'#95988e');}for(let y=grid.y;y<=grid.y+grid.h;y+=grid.step){path([[grid.x,y],[grid.x+grid.w,y]],83,'#57685d');path([[grid.x,y],[grid.x+grid.w,y]],70,'#95988e');}}
- for(let c=0;c<gx.length;c++)for(let r=0;r<gy.length;r++)if((c+r)%3===0){const x=gx[c]+56,y=gy[r]-39;for(let i=0;i<6;i++)rect(x,y+i*12,32,6,1,'#d1c8ac84')}
+ for(const x of gx){if(!overlaps(view,x,1030,x,3390,53))continue;path([[x,1030],[x,3390]],105,'#57685d');path([[x,1030],[x,3390]],92,'#888b83');path([[x,1030],[x,3390]],3,'#e5d4a8',[24,29])}
+ for(const y of gy){if(!overlaps(view,3020,y,5900,y,53))continue;path([[3020,y],[5900,y]],105,'#57685d');path([[3020,y],[5900,y]],92,'#888b83');path([[3020,y],[5900,y]],3,'#e5d4a8',[24,29])}
+ for(const grid of townGrids){if(!overlaps(view,grid.x,grid.y,grid.x+grid.w,grid.y+grid.h,42))continue;for(let x=grid.x;x<=grid.x+grid.w;x+=grid.step){if(!overlaps(view,x,grid.y,x,grid.y+grid.h,42))continue;path([[x,grid.y],[x,grid.y+grid.h]],83,'#57685d');path([[x,grid.y],[x,grid.y+grid.h]],70,'#95988e');}for(let y=grid.y;y<=grid.y+grid.h;y+=grid.step){if(!overlaps(view,grid.x,y,grid.x+grid.w,y,42))continue;path([[grid.x,y],[grid.x+grid.w,y]],83,'#57685d');path([[grid.x,y],[grid.x+grid.w,y]],70,'#95988e');}}
+ for(let c=0;c<gx.length;c++)for(let r=0;r<gy.length;r++)if((c+r)%3===0){const x=gx[c]+56,y=gy[r]-39;if(!overlaps(view,x,y,x+32,y+66))continue;for(let i=0;i<6;i++)rect(x,y+i*12,32,6,1,'#d1c8ac84')}
  // Ponti: consentono di oltrepassare il corso d'acqua sulle strade.
- for(const p of [[1540,3390,235,99,-.05],[2600,2950,210,90,-.32]]){ctx.save();ctx.translate(p[0],p[1]);ctx.rotate(p[4]);rect(-p[2]/2,-p[3]/2-8,p[2],p[3]+16,4,'#d7c7a2','#5d6b5e',6);rect(-p[2]/2,-p[3]/2+5,p[2],p[3]-10,2,'#8e9588');ctx.restore()}
+ for(const p of [[1540,3390,235,99,-.05],[2600,2950,210,90,-.32]]){if(!overlaps(view,p[0]-150,p[1]-100,p[0]+150,p[1]+100))continue;ctx.save();ctx.translate(p[0],p[1]);ctx.rotate(p[4]);rect(-p[2]/2,-p[3]/2-8,p[2],p[3]+16,4,'#d7c7a2','#5d6b5e',6);rect(-p[2]/2,-p[3]/2+5,p[2],p[3]-10,2,'#8e9588');ctx.restore()}
 }
 function drawRoadDetails(view){
  const cell=175;for(let yy=Math.floor(view.t/cell);yy<=Math.ceil(view.b/cell);yy++)for(let xx=Math.floor(view.l/cell);xx<=Math.ceil(view.r/cell);xx++){
- const x=xx*cell+hash(xx+71,yy)*80,y=yy*cell+hash(xx,yy+90)*80,d=Math.min(roadDist(x,y),cityRoadDist(x,y));
- if(d>8||hash(xx,yy)<.64)continue;
+ if(hash(xx,yy)<.64)continue;
+ const x=xx*cell+hash(xx+71,yy)*80,y=yy*cell+hash(xx,yy+90)*80,d=Math.min(fastRoadDist(x,y,8),cityRoadDist(x,y));
+ if(d>8)continue;
  ctx.beginPath();ctx.moveTo(x-13,y-9);ctx.lineTo(x-2,y+3);ctx.lineTo(x+9,y+7);ctx.lineTo(x+20,y+21);ctx.strokeStyle='#455d5877';ctx.lineWidth=2;ctx.stroke();
  }
  // Vegetazione spunta dal cemento.

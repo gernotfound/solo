@@ -48,3 +48,7 @@ L'espansione resta **una prima bozza**: edifici non ancora esplorabili all'inter
 ## Feedback visivo e oggetti lasciati
 
 La presentazione è suddivisa in livelli: macrobiomi, dettagli deterministici di terreno visibile, strade, edifici/oggetti, pile lasciate, personaggio. Oggetti lootabili rappresentano lo stato effettivo: portiere aperte dopo la perquisizione, porte degli edifici socchiuse, casse scoperchiate, cespugli senza bacche, alberi tagliati. Le interazioni rimangono persistenti e rispettano la rigenerazione già prevista; dopo il tempo di recupero tornano i disegni originari. Le pile lasciate sul terreno conservano ID, quantità e posizione, e sono salvate sul dispositivo. Questi feedback non sostituiscono ancora interni esplorabili o animazioni complesse.
+
+## Rendering e collisioni
+
+Le strade, le decorazioni statiche e il terreno sono rasterizzati in tessere riutilizzabili. Le query di distanza limitata usano un indice di segmenti, ma il calcolo originale esatto resta disponibile per gli algoritmi che richiedono la distanza assoluta. Le tessere non contengono oggetti interattivi, per cui lo stato delle auto, delle piante, dei contenitori e delle pile lasciate resta immediatamente visibile. Se il budget di memoria non consente la cache, il gioco torna al renderer non memorizzato.

@@ -11,3 +11,19 @@ export function daylight(date){const {sunrise,sunset}=solarHours(date);const hou
  const smooth=t=>{t=clamp(t,0,1);return t*t*(3-2*t)};return clamp(smooth((hour-(sunrise-.55))/1.1)*(1-smooth((hour-(sunset-.55))/1.1)),0,1);
 }
 export function timeText(date){return date.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit',hour12:false});}
+
+// I calcoli di alba e tramonto dipendono dal tempo reale, non dal frame rate.
+// Un campionamento al secondo mantiene invariata la progressione percepibile
+// e impedisce di ripetere la trigonometria 60-120 volte al secondo.
+export function createDaylightSampler(sample=daylight,intervalMs=1000){
+ if(!Number.isFinite(intervalMs)||intervalMs<=0)throw new RangeError('Invalid daylight sample interval');
+ let lastTime=-Infinity,lastValue=NaN;
+ return date=>{
+  const now=date.getTime();
+  if(!Number.isFinite(now))return sample(date);
+  if(!Number.isFinite(lastValue)||now<lastTime||now-lastTime>=intervalMs){
+   lastValue=sample(date);lastTime=now;
+  }
+  return lastValue;
+ };
+}
