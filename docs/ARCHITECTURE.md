@@ -25,7 +25,7 @@
 | `src/app/game.js` | Orchestratore Canvas, input e interazioni col mondo. È il prossimo perimetro da scomporre ulteriormente in sistemi di gameplay, controlli e UI. |
 | `scripts/build.mjs` | Converte i moduli ES in un HTML statico autonomo con import map e URL data senza modificare le sorgenti. |
 
-**Flusso dipendenze:** `app` → `domain`/`world`/`render`; `render` → `domain` e dati `world`; `world` → `domain`. Il dominio non conosce né DOM né Canvas né Cloudflare.
+**Flusso dipendenze:** `app` → `domain`/`world`/`render`; `render` → `domain` e dati `world`; `world` → `domain`. Il dominio non conosce né DOM né Canvas né la piattaforma di hosting.
 
 ## Contratti di gameplay
 
@@ -42,7 +42,7 @@
 2. Per una **nuova zona** aggiornare generazione, regole di collisione e minimappa, poi controllare seed, ID e prestazioni.
 3. Per un **nuovo sistema** introdurre moduli con input/output testabili anziché estendere indiscriminatamente `app/game.js`.
 4. Verificare invarianti con `npm test`, startup e flussi reali con `npm run test:browser`, e generare la build con `npm run build`.
-5. La CI GitHub è un gate per il codice, ma **non dimostra** correttezza su Safari reale, quota Cloudflare, prestazioni di dispositivi economici o comportamento dopo deploy: servono prove distinte.
+5. La CI GitHub è un gate per il codice, ma **non dimostra** correttezza su Safari reale, configurazione GitHub Pages, prestazioni di dispositivi economici o comportamento dopo deploy: servono prove distinte.
 
 ## Lavoro successivo (non ancora implementato)
 
@@ -56,3 +56,7 @@ Nessuna di queste funzioni è dichiarata pronta: SoLo rimane una prima bozza con
 
 ## Espansione geografica v2
 La mappa è 22.400 × 16.400 unità (11,96 volte l'area iniziale). La generazione del mondo originale è intenzionalmente invariata e precede quella delle nuove regioni: regressioni sugli ID persistiti sono bloccanti. I biomi, le testimonianze e i monumenti sono facoltativi. Vedere [WORLD.md](WORLD.md) per atlante e contratti.
+
+## Hosting
+
+La build statica autonoma viene generata da `npm run build` ed è distribuita tramite GitHub Pages. La verifica automatica del progetto deve essere positiva prima della pubblicazione. Non sono richiesti Worker, database, API né servizi esterni per eseguire il gioco; il salvataggio rimane locale e dipende dall'origine del browser.
