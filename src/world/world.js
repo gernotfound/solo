@@ -1,5 +1,8 @@
 import {clamp,DEFAULT_POSITION} from '../domain/index.js';
-export const W=6400,H=4800,TAU=Math.PI*2;
+import {MAP_WIDTH,MAP_HEIGHT,REGIONS,EXTRA_TOWNS,EXTRA_WATERS,buildExpansion,regionAt} from './expansion.js';
+import {createSpatialIndex} from './spatial.js';
+export const W=MAP_WIDTH,H=MAP_HEIGHT,TAU=Math.PI*2;
+const LEGACY_W=6400,LEGACY_H=4800;
 const hypot=(x,y,a,b)=>Math.hypot(x-a,y-b);
 export function createWorld(savedState) {
 let seed=0x3512af91;
@@ -11,6 +14,7 @@ const forest=[{x:850,y:1250,rx:890,ry:1090},{x:2410,y:540,rx:920,ry:680},{x:5200
 const fields=[{x:650,y:3800,w:940,h:690},{x:1710,y:3470,w:980,h:750},{x:2700,y:3460,w:690,h:870},{x:4780,y:3530,w:800,h:540},{x:700,y:2470,w:540,h:450},{x:1630,y:2920,w:510,h:420}];
 const lake={x:1850,y:1090,rx:480,ry:330};
 const pond={x:5940,y:3700,rx:250,ry:160};
+const waterBodies=[lake,pond],townGrids=[];
 const river=[[1830,0],[1930,340],[1950,610],[2040,1020],[2070,1440],[2290,1830],[2500,2170],[2690,2630],[2860,3080],[3070,3600],[3260,4090],[3450,4800]];
 const routes=[
  {w:100,p:[[0,3430],[800,3420],[1470,3390],[2050,3200],[2790,2950],[3270,2730],[4020,2470],[4730,2360],[6400,2140]]},
@@ -44,13 +48,14 @@ function addWorld(o){o.id=o.id||`o${serial++}`;o.depth=o.kind==='house'?o.y+o.h:
 function segDist(px,py,a,b){const dx=b[0]-a[0],dy=b[1]-a[1],t=clamp(((px-a[0])*dx+(py-a[1])*dy)/(dx*dx+dy*dy||1),0,1);return Math.hypot(px-a[0]-t*dx,py-a[1]-t*dy)}
 function pathDist(x,y,p){let d=Infinity;for(let i=1;i<p.length;i++)d=Math.min(d,segDist(x,y,p[i-1],p[i]));return d;}
 function roadDist(x,y){let d=Infinity;for(const r of routes)d=Math.min(d,pathDist(x,y,r.p)-r.w*.5);return d}
-function cityRoadDist(x,y){if(x<2950||x>5990||y<970||y>3460)return Infinity;let d=Infinity;for(const x0 of gx)d=Math.min(d,Math.abs(x-x0)-44);for(const y0 of gy)d=Math.min(d,Math.abs(y-y0)-44);return d}
+function cityRoadDist(x,y){let d=Infinity;if(x>=2950&&x<=5990&&y>=970&&y<=3460){for(const x0 of gx)d=Math.min(d,Math.abs(x-x0)-44);for(const y0 of gy)d=Math.min(d,Math.abs(y-y0)-44)}for(const g of townGrids){if(x<g.x||x>g.x+g.w||y<g.y||y>g.y+g.h)continue;d=Math.min(d,Math.abs((x-g.x)%g.step)<44?0:Math.min((x-g.x)%g.step,g.step-(x-g.x)%g.step)-44);d=Math.min(d,Math.min((y-g.y)%g.step,g.step-(y-g.y)%g.step)-44)}return d}
 function woods(x,y){let v=-1;for(const f of forest){const t=((x-f.x)/f.rx)**2+((y-f.y)/f.ry)**2;v=Math.max(v,1-t)}return v}
-function inCity(x,y){return x>3010&&x<5910&&y>970&&y<3440}
+function inCity(x,y){return x>3010&&x<5910&&y>970&&y<3440||townGrids.some(g=>x>g.x&&x<g.x+g.w&&y>g.y&&y<g.y+g.h)}
 function inField(x,y){return fields.some(f=>x>f.x&&x<f.x+f.w&&y>f.y&&y<f.y+f.h)}
 function inLake(x,y,shape){return((x-shape.x)/shape.rx)**2+((y-shape.y)/shape.ry)**2<.88}
-function inWater(x,y){return inLake(x,y,lake)||inLake(x,y,pond)||(pathDist(x,y,river)<49 && roadDist(x,y)>34)}
-function blocked(x,y,r=20){if(x<40||x>W-40||y<40||y>H-40||inWater(x,y))return true;
+function inWater(x,y){return waterBodies.some(body=>inLake(x,y,body))||(pathDist(x,y,river)<49 && roadDist(x,y)>34)}
+let legacyGeneration=true;
+function blocked(x,y,r=20){if(x<40||x>(legacyGeneration?LEGACY_W:W)-40||y<40||y>(legacyGeneration?LEGACY_H:H)-40||inWater(x,y))return true;
  if(roadDist(x,y)<r+9||cityRoadDist(x,y)<r+9)return true;
  for(const b of buildings){if(x>b.x-r&&x<b.x+b.w+r&&y>b.y-r&&y<b.y+b.h+r)return true}
  for(const o of interactables){if((o.kind==='tree'||o.kind==='car'||o.kind==='rock')&&hypot(x,y,o.x,o.y)<r+(o.r||24))return true}
@@ -78,25 +83,47 @@ for(const [x,y] of [[1530,1400],[2320,1570],[5930,3480]])addWorld({kind:'well',x
 for(const [x,y] of [[975,3800],[2420,3970],[4620,3600]])addWorld({kind:'camp',x,y,r:27});
 for(let i=0;i<1100;i++){
  const f=seedChoice(forest),x=rand(f.x-f.rx,f.x+f.rx),y=rand(f.y-f.ry,f.y+f.ry),r=rand(18,37);
- if(x<35||x>W-35||y<35||y>H-35||woods(x,y)<rand(-.15,.38)||blocked(x,y,r+8))continue;
+ if(x<35||x>LEGACY_W-35||y<35||y>LEGACY_H-35||woods(x,y)<rand(-.15,.38)||blocked(x,y,r+8))continue;
  addWorld({kind:random()<.14?'deadTree':'tree',x,y,r,shade:random(),rot:rand(0,TAU)});
 }
 for(let i=0;i<570;i++){
- const x=rand(30,W-30),y=rand(30,H-30),r=rand(8,20);
+ const x=rand(30,LEGACY_W-30),y=rand(30,LEGACY_H-30),r=rand(8,20);
  if(blocked(x,y,r+4))continue;
  addWorld({kind:random()<.35?'rock':random()<.20?'berry':'bush',x,y,r,shade:random()});
 }
 // Scorte facili nei primi metri e vegetazione dedicata all'esplorazione iniziale.
 for(const [kind,x,y]of [['berry',1010,3730],['berry',1170,3750],['rock',870,3610],['deadTree',850,3710],['bush',1080,3820],['crate',1220,3520]])addWorld({kind,x,y,r:20,shade:.5});
 for(let i=0;i<90;i++){
- let x=0,y=0,tries=0;do{x=rand(80,W-80);y=rand(90,H-90);tries++}while(tries<45&&(Math.min(roadDist(x,y),cityRoadDist(x,y))>22||buildings.some(b=>x>b.x-45&&x<b.x+b.w+45&&y>b.y-45&&y<b.y+b.h+45)||hypot(x,y,DEFAULT_POSITION.x,DEFAULT_POSITION.y)<110));
+ let x=0,y=0,tries=0;do{x=rand(80,LEGACY_W-80);y=rand(90,LEGACY_H-90);tries++}while(tries<45&&(Math.min(roadDist(x,y),cityRoadDist(x,y))>22||buildings.some(b=>x>b.x-45&&x<b.x+b.w+45&&y>b.y-45&&y<b.y+b.h+45)||hypot(x,y,DEFAULT_POSITION.x,DEFAULT_POSITION.y)<110));
  if(tries<45)addWorld({kind:'car',x,y,r:27,shade:random(),rot:randInt(0,3)*Math.PI/2+rand(-.14,.14)});
 }
-for(let i=0;i<150;i++){const x=rand(0,W),y=rand(0,H);if(blocked(x,y,18))continue;addWorld({kind:'debris',x,y,r:rand(3,11),shade:random()})}
+for(let i=0;i<150;i++){const x=rand(0,LEGACY_W),y=rand(0,LEGACY_H);if(blocked(x,y,18))continue;addWorld({kind:'debris',x,y,r:rand(3,11),shade:random()})}
 for(let i=0;i<42;i++){
- const x=rand(60,W-60),y=rand(90,H-90);if(blocked(x,y,30)||inCity(x,y))continue;
+ const x=rand(60,LEGACY_W-60),y=rand(90,LEGACY_H-90);if(blocked(x,y,30)||inCity(x,y))continue;
  wildlife.push({id:`animal-${i}`,kind:i%7===0?'wolf':i%3===0?'deer':'rabbit',x,y,originX:x,originY:y,dir:rand(0,TAU),turn:rand(1,4),hp:i%7===0?90:i%3===0?60:30,agro:0,attackAt:0,deadAt:savedState.animals[`animal-${i}`]||0});
 }
+// Anche le sette aree originali sono territori narrativi, mai quest obbligatorie.
+const originalStories={
+ shelter:["Una famiglia lasciò il rifugio apparecchiato e una cisterna ancora piena.","La porta non fu forzata: qualcuno pensava di tornare."],
+ lake:["L'ultimo pescatore segnò con una matita tutte le barche scomparse.","Sulla riva restano un pontile e le reti vuote."],
+ forest:["Il guardaboschi scrisse il vento e l'ora, poi smise di contare i giorni.","La torre dei pini guarda un sentiero che nessuno percorre."],
+ city:["La città fu evacuata un quartiere alla volta. Gli altoparlanti continuarono a ripetere lo stesso messaggio.","Scuole, case e negozi conservano gli oggetti lasciati nella fuga."],
+ police:["L'ultimo turno registrò una chiamata proveniente da una linea ormai scollegata.","Il cancello del commissariato è rimasto aperto."],
+ fields:["I quaderni agricoli segnano semine successive al giorno del blackout.","Qualcuno si prendeva cura dei raccolti nel silenzio."],
+ radio:["La frequenza della stazione rimase attiva, ma la voce divenne soltanto statica.","Una torre isolata e un ultimo registro delle trasmissioni."]
+};
+for(const p of locations){const data=originalStories[p.id];if(data){p.story=data[0];p.clue=data[1]}}
+legacyGeneration=false;
+townGrids.push(...EXTRA_TOWNS);
+waterBodies.push(...EXTRA_WATERS);
+buildExpansion({addWorld,blocked,forest,fields,routes,locations,notes,wildlife,savedState});
 world.sort((a,b)=>a.depth-b.depth);
-return {world,buildings,interactables,wildlife,ambient,random,rand,randInt,hash,forest,fields,lake,pond,river,routes,gx,gy,locations,notes,segDist,pathDist,roadDist,cityRoadDist,woods,inCity,inField,inLake,inWater,blocked};
+const allObjects=createSpatialIndex(world);
+const allInteractive=createSpatialIndex(interactables);
+const allBuildings=createSpatialIndex(buildings);
+return {world,buildings,interactables,wildlife,ambient,random,rand,randInt,hash,forest,fields,lake,pond,waterBodies,townGrids,regions:REGIONS,regionAt,river,routes,gx,gy,locations,notes,segDist,pathDist,roadDist,cityRoadDist,woods,inCity,inField,inLake,inWater,blocked,
+ queryWorld:(l,t,r,b)=>allObjects.query(l,t,r,b),
+ queryInteractables:(l,t,r,b)=>allInteractive.query(l,t,r,b),
+ queryBuildings:(l,t,r,b)=>allBuildings.query(l,t,r,b),
+ spatialCells:allObjects.cellCount};
 }

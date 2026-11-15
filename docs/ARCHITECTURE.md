@@ -17,8 +17,11 @@
 | `src/domain/vitals.js` | Fame, sete, energia, freddo e salute. |
 | `src/domain/time.js` | Luce stagionale e testo dell’ora. Nessun uso implicito del frame time. |
 | `src/domain/persistence.js` | Salva/carica con chiave `solo-save-v1` e migrazione non distruttiva dalle due chiavi precedenti. |
-| `src/world/world.js` | Generazione deterministica della geografia e degli oggetti, identità stabile di case, contenitori e animali. |
-| `src/render/scenery.js` | Disegno cartoon Canvas delle entità ambientali; non gestisce regole di gioco. |
+| `src/world/world.js` | Generatore originale preservato, integrazione espansione, collisioni, indice spaziale e API di query. |
+| `src/world/expansion.js` | Nuova geografia e 11 regioni narrative con RNG e ID indipendenti dal mondo legacy. |
+| `src/world/spatial.js` | Griglia per query rettangolari e culling degli oggetti vicini. |
+| `src/render/scenery.js` | Disegno cartoon Canvas di macrobiomi, monumenti, paesaggi e dettagli ambientali. |
+| `src/render/atlas.js` | Atlante globale e minimappa locale, con contratti geografici condivisi. |
 | `src/app/game.js` | Orchestratore Canvas, input e interazioni col mondo. È il prossimo perimetro da scomporre ulteriormente in sistemi di gameplay, controlli e UI. |
 | `scripts/build.mjs` | Converte i moduli ES in un HTML statico autonomo con import map e URL data senza modificare le sorgenti. |
 
@@ -46,7 +49,10 @@
 - Interni delle case navigabili; deposito e costruzione di basi; contenitori fisici, ricette avanzate.
 - Rifinire il modello di danno/ferite, fisiologia, fauna, equipaggiamenti durevoli e bilanciamento delle risorse.
 - Separazione ulteriore dell’orchestratore in `movement`, `interaction`, `combat`, `farming`, `menus` ed eventi tipizzati.
-- Chunk/spatial-index per evitare scansioni globali con mappe più grandi; misurazioni p95 FPS, input latency e memoria su smartphone.
+- L'indice spaziale e le query di prossimità sono disponibili. Restano da aggiungere streaming dei chunk, LOD e misurazioni p95 FPS, latenza input e memoria su smartphone.
 - Automazione di backup/export del salvataggio e versioning per future aggiunte allo schema.
 
 Nessuna di queste funzioni è dichiarata pronta: SoLo rimane una prima bozza con fondamenta testabili.
+
+## Espansione geografica v2
+La mappa è 22.400 × 16.400 unità (11,96 volte l'area iniziale). La generazione del mondo originale è intenzionalmente invariata e precede quella delle nuove regioni: regressioni sugli ID persistiti sono bloccanti. I biomi, le testimonianze e i monumenti sono facoltativi. Vedere [WORLD.md](WORLD.md) per atlante e contratti.

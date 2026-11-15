@@ -1,6 +1,7 @@
 import {ITEMS,RECIPES,SLOTS,SLOT_NAMES,DEFAULT_POSITION,initialState,sanitizeState,clamp,quantity,carriedWeight,carryCapacity,addItem,removeItem,canCraft,craft,equip,consume,daylight,solarHours,timeText,statEffects} from '../domain/index.js'
 import {createWorld,W,H,TAU} from '../world/world.js'
 import {createSceneryRenderer} from '../render/scenery.js'
+import {createAtlasRenderer} from '../render/atlas.js'
 import {loadState,saveState,resetState} from '../domain/persistence.js';
 
 const $=id=>document.getElementById(id),canvas=$('game'),ctx=canvas.getContext('2d',{alpha:false}),mini=$('mini'),mc=mini.getContext('2d'),overlay=$('overlay'),content=$('panel-content');
@@ -11,8 +12,9 @@ let state=loadState(localStorage);
 function save(){return saveState(localStorage,state)}
 window.addEventListener('pagehide',save);
 const worldData=createWorld(state);
-const {world,buildings,interactables,wildlife,ambient,random,rand,randInt,hash,forest,fields,lake,pond,river,routes,gx,gy,locations,notes,pathDist,roadDist,cityRoadDist,woods,inCity,inField,inLake,inWater,blocked}=worldData;
+const {world,buildings,interactables,wildlife,ambient,random,rand,randInt,hash,forest,fields,lake,pond,river,routes,gx,gy,locations,notes,pathDist,roadDist,cityRoadDist,woods,inCity,inField,inLake,inWater,blocked,queryWorld,queryBuildings,queryInteractables,regionAt,regions}=worldData;
 const {ell,rect,path,land,drawRoads,drawRoadDetails,drawObject}=createSceneryRenderer(ctx,state,worldData);
+const mapDraw=createAtlasRenderer(worldData,state);
 let facing=state.face||0,step=0,moving=false,camX=state.x,camY=state.y,vw=1,vh=1,dpr=1,zoom=1,frame=0,last=0,panel=null,activeTarget=null;
 const keys=new Set(),stickVec={x:0,y:0};let touchRun=false,stickPointer=null,toastingUntil=0,lastAttack=0;
 function drawPlayer(t){const x=state.x,y=state.y,walk=moving?Math.sin(step*9)*5:0,hand=state.equipment.hand;
@@ -43,7 +45,7 @@ function drawScene(t){ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle='#b7b38d';
  const pad=95,l=camX-vw/(2*zoom)-pad,r=camX+vw/(2*zoom)+pad,tp=camY-vh/(2*zoom)-pad,b=camY+vh/(2*zoom)+pad,view={l:clamp(l,0,W),r:clamp(r,0,W),t:clamp(tp,0,H),b:clamp(b,0,H)};
  land(view);drawRoads();drawRoadDetails(view);
  let drawn=false;
- for(const o of world){if(!drawn&&o.depth>state.y){drawPlayer(t);drawn=true}
+ for(const o of queryWorld(l-90,tp-90,r+90,b+90).sort((a,b)=>a.depth-b.depth)){if(!drawn&&o.depth>state.y){drawPlayer(t);drawn=true}
  if(o.kind==='house'){if(o.x+o.w<l||o.x>r||o.y+o.h<tp||o.y>b)continue}
  else if(o.x+55<l||o.x-55>r||o.y+65<tp||o.y-65>b)continue;
  drawObject(o,t);
@@ -59,7 +61,7 @@ const targetPoint=t=>t.type==='note'?notes[t.idx]:t.type==='animal'?t.object:{x:
 const targetTitle=t=>t.type==='note'?notes[t.idx].name:t.type==='animal'?`Carcassa di ${t.object.kind==='wolf'?'lupo':t.object.kind==='deer'?'cervo':'coniglio'}`:{house:({home:'Casa abbandonata',shelter:'Casa rifugio',police:'Commissariato',clinic:'Ambulatorio',market:'Alimentari',warehouse:'Magazzino',shop:'Bottega',barn:'Fienile',radio:'Stazione radio'})[t.object.category]||'Edificio',car:'Auto abbandonata',tree:'Albero',deadTree:'Albero secco',bush:'Cespuglio',berry:'Bacche selvatiche',rock:'Pietre',camp:'Fuoco da campo',plot:'Orto',well:'Acqua da raccogliere',crate:'Cassa',bed:'Posto per riposare'}[t.object.kind]||'Oggetto';
 const targetVerb=t=>t.type==='note'?'RICORDA':t.type==='animal'?'SCUOIA':['car','house','crate'].includes(t.object.kind)?'CERCA':t.object.kind==='plot'?'COLTIVA':t.object.kind==='camp'?'FUOCO':t.object.kind==='bed'?'RIPOSA':'RACCOGLI';
 function collectTarget(){let closest=null,score=1e9;
- for(const o of interactables){const p=o.kind==='house'?{x:o.doorX,y:o.doorY}:o,d=hypot(state.x,state.y,p.x,p.y),limit=o.kind==='house'?98:75;if(d>limit)continue;
+ for(const o of queryInteractables(state.x-175,state.y-175,state.x+175,state.y+175)){const p=o.kind==='house'?{x:o.doorX,y:o.doorY}:o,d=hypot(state.x,state.y,p.x,p.y),limit=o.kind==='house'?98:75;if(d>limit)continue;
   const penalty=['tree','bush','rock'].includes(o.kind)?15:0;if(d+penalty<score){score=d+penalty;closest={type:'world',object:o}}}
  for(let i=0;i<notes.length;i++)if(!state.found.includes(i)){const d=hypot(state.x,state.y,notes[i].x,notes[i].y);if(d<90&&d-12<score){score=d-12;closest={type:'note',idx:i}}}
  for(const a of wildlife)if(a.deadAt>0){const d=hypot(state.x,state.y,a.x,a.y);if(d<85&&d-15<score){score=d-15;closest={type:'animal',object:a}}}
@@ -94,8 +96,8 @@ function harvest(o){const cooldown=o.kind==='tree'||o.kind==='deadTree'?200000:o
  state.harvested[o.id]=Date.now()+cooldown;notify('Raccolto: '+Object.entries(items).map(([id,n])=>`${ITEMS[id].name} ×${n}`).join(', '));save();
 }
 function canCarryBundle(all){const total=Object.entries(all).reduce((sum,[k,n])=>sum+ITEMS[k].weight*n,0);return carriedWeight(state)+total<=carryCapacity(state)+1e-5}
-function nearFire(){return interactables.some(o=>o.kind==='camp'&&state.fires[o.id]>Date.now()&&hypot(state.x,state.y,o.x,o.y)<142)}
-function nearFarm(){return interactables.some(o=>o.kind==='plot'&&hypot(state.x,state.y,o.x,o.y)<140)}
+function nearFire(){return queryInteractables(state.x-150,state.y-150,state.x+150,state.y+150).some(o=>o.kind==='camp'&&state.fires[o.id]>Date.now()&&hypot(state.x,state.y,o.x,o.y)<142)}
+function nearFarm(){return queryInteractables(state.x-145,state.y-145,state.x+145,state.y+145).some(o=>o.kind==='plot'&&hypot(state.x,state.y,o.x,o.y)<140)}
 function fireInteraction(o){if(state.fires[o.id]>Date.now()){state.stamina=clamp(state.stamina+35,0,100);state.warmth=clamp(state.warmth+30,0,100);notify('Ti sei riposato al calore del fuoco. +35 resistenza, +30 calore. Cucina dal menu Crea.');save();return}
  if(quantity(state,'wood')<3||quantity(state,'stone')<1){notify('Per accendere il fuoco servono 3 Legno e 1 Pietra.');return}
  removeItem(state,'wood',3);removeItem(state,'stone',1);state.fires[o.id]=Date.now()+15*60*1000;notify('Fuoco acceso per 15 minuti reali. Ora puoi cucinare e purificare l’acqua.');save();
@@ -125,7 +127,7 @@ function damageTool(amount){const weapon=state.equipment.hand;if(!ITEMS[weapon]?
  if(after<=0){removeItem(state,weapon);state.condition[weapon]=0;notify('Il tuo utensile si è rotto!')}else state.condition[weapon]=after;
 }
 function clearShot(a){const dx=a.x-state.x,dy=a.y-state.y,steps=Math.ceil(Math.hypot(dx,dy)/38);
- for(let i=1;i<steps;i++){const x=state.x+dx*i/steps,y=state.y+dy*i/steps;if(buildings.some(b=>x>b.x&&x<b.x+b.w&&y>b.y&&y<b.y+b.h))return false}return true}
+ const nearby=queryBuildings(Math.min(state.x,a.x),Math.min(state.y,a.y),Math.max(state.x,a.x),Math.max(state.y,a.y));for(let i=1;i<steps;i++){const x=state.x+dx*i/steps,y=state.y+dy*i/steps;if(nearby.some(b=>x>b.x&&x<b.x+b.w&&y>b.y&&y<b.y+b.h))return false}return true}
 function attack(){if(panel||state.health<=0)return;
  const now=performance.now(),weapon=state.equipment.hand||'fists',pistol=weapon==='pistol',def=ITEMS[weapon],cool=pistol?500:weapon==='axe'?720:430;
  if(now-lastAttack<cool)return;lastAttack=now;
@@ -154,22 +156,8 @@ function updateAnimals(dt){const now=Date.now();for(const a of wildlife){if(a.de
  else if(fleeing){a.dir=Math.atan2(a.y-state.y,a.x-state.x);speed=a.kind==='rabbit'?170:145}
  else{speed*=.38;if(a.turn<=0){a.turn=rand(1.5,4.5);a.dir+=rand(-1.8,1.8)}}
  const nx=a.x+Math.cos(a.dir)*speed*dt,ny=a.y+Math.sin(a.dir)*speed*dt;
- if(nx>30&&nx<W-30&&ny>30&&ny<H-30&&!inWater(nx,ny)&&!buildings.some(b=>nx>b.x-18&&nx<b.x+b.w+18&&ny>b.y-18&&ny<b.y+b.h+18)){a.x=nx;a.y=ny}else a.dir+=1.6;
+ if(nx>30&&nx<W-30&&ny>30&&ny<H-30&&!inWater(nx,ny)&&!queryBuildings(nx-18,ny-18,nx+18,ny+18).some(b=>nx>b.x-18&&nx<b.x+b.w+18&&ny>b.y-18&&ny<b.y+b.h+18)){a.x=nx;a.y=ny}else a.dir+=1.6;
  }}
-function mapDraw(c,w,h,full=false){const sx=w/W,sy=h/H;c.clearRect(0,0,w,h);c.fillStyle='#b8b58e';c.fillRect(0,0,w,h);
- for(const f of forest){c.fillStyle='#799c78';c.beginPath();c.ellipse(f.x*sx,f.y*sy,f.rx*sx,f.ry*sy,0,0,TAU);c.fill()}
- for(const f of fields){c.fillStyle='#c7bd83';c.fillRect(f.x*sx,f.y*sy,f.w*sx,f.h*sy)}
- c.fillStyle='#aaa99f';c.fillRect(2990*sx,970*sy,2940*sx,2470*sy);
- c.lineCap='round';c.lineJoin='round';const drawPath=(p,color,width)=>{c.beginPath();p.forEach((point,i)=>i?c.lineTo(point[0]*sx,point[1]*sy):c.moveTo(point[0]*sx,point[1]*sy));c.strokeStyle=color;c.lineWidth=Math.max(1,width*sx);c.stroke()};
- drawPath(river,'#669f9f',120);for(const q of [lake,pond]){c.fillStyle='#6ca1a0';c.beginPath();c.ellipse(q.x*sx,q.y*sy,q.rx*sx,q.ry*sy,0,0,TAU);c.fill()}
- for(const r of routes){drawPath(r.p,'#59665e',r.w+12);drawPath(r.p,'#858a7e',r.w)}
- for(const x of gx)drawPath([[x,1050],[x,3380]],'#636d68',89);
- for(const y of gy)drawPath([[3070,y],[5880,y]],'#636d68',89);
- if(full){for(const p of locations){c.beginPath();c.arc(p.x*sx,p.y*sy,5,0,TAU);c.fillStyle=p.id==='shelter'?'#f4ebbb':'#f6c36e';c.fill();c.strokeStyle='#354d41';c.lineWidth=1.6;c.stroke()}
- for(let i=0;i<notes.length;i++){const n=notes[i];c.fillStyle=state.found.includes(i)?'#739a71':'#f7dfa1';c.beginPath();c.arc(n.x*sx,n.y*sy,4,0,TAU);c.fill()}}
- if(state.marker){c.strokeStyle='#d18055';c.setLineDash([4,4]);c.beginPath();c.moveTo(state.x*sx,state.y*sy);c.lineTo(state.marker.x*sx,state.marker.y*sy);c.stroke();c.setLineDash([]);c.beginPath();c.arc(state.marker.x*sx,state.marker.y*sy,full?7:4,0,TAU);c.strokeStyle='#e29c5d';c.lineWidth=3;c.stroke()}
- c.fillStyle='#fff7c6';c.beginPath();c.arc(state.x*sx,state.y*sy,full?7:5,0,TAU);c.fill();c.strokeStyle='#204336';c.lineWidth=2.5;c.stroke();
-}
 function openPanel(tab){panel=tab;overlay.classList.remove('hidden');keys.clear();stickVec.x=stickVec.y=0;resetStick();updatePanel();if(tab!=='death')$('close').focus()}
 function closePanel(force=false){if(panel==='death'&&!force)return;panel=null;overlay.classList.add('hidden')}
 function panelItems(){const active=Object.entries(state.inventory).filter(([id,n])=>ITEMS[id]&&n>0).sort((a,b)=>(ITEMS[a[0]].slot?0:1)-(ITEMS[b[0]].slot?0:1));
@@ -187,7 +175,7 @@ function panelEquipment(){let html=`<div class="inventory-stats"><span>ISOLAMENT
  for(const slot of SLOTS){const id=state.equipment[slot],item=ITEMS[id];html+=`<article class="slot-row"><span class="item-icon">${item?.icon||'—'}</span><div class="item-copy"><strong>${SLOT_NAMES[slot]}</strong><small>${item?.name||'Niente equipaggiato'}</small></div>${item?`<button class="ui-btn alt" data-act="equip" data-id="${id}">TOGLI</button>`:''}</article>`}
  html+=`</div><div class="equipment-figure"><div><div style="font-size:60px">${state.equipment.body==='jacket'?'🧥':'🧍'}</div><strong>IL SOPRAVVISSUTO</strong><p class="smallnote">Arma: ${state.equipment.hand?ITEMS[state.equipment.hand].name:'Pugni'}<br>Giacca: ${state.equipment.body?ITEMS[state.equipment.body].name:'nessuna'}<br>Carico residuo: ${(carryCapacity(state)-carriedWeight(state)).toFixed(1)} kg</p></div></div></div>`;return html;
 }
-function panelMap(){return `<p class="smallnote">Seleziona un punto della carta per impostare una destinazione. I simboli chiari segnalano luoghi d’interesse; l’indicatore bianco sei tu.</p><canvas id="bigmap" width="900" height="675" aria-label="Mappa del mondo, tocca per scegliere la destinazione"></canvas><div class="map-info"><span>🟩 Bosco · 🟨 Campi · ◻ Città · 🟦 Acqua</span><span>Esplora al tuo ritmo</span></div><div class="row-actions" style="margin-top:12px"><button class="ui-btn alt" data-act="marker-clear">RIMUOVI SEGNAPOSTO</button></div><div class="section-title">LUOGHI DA ESPLORARE</div><div class="guide-grid">${locations.map(p=>`<article class="journal-card"><div class="item-copy"><strong>${p.name}</strong><small>${Math.round(hypot(state.x,state.y,p.x,p.y))} m dalla tua posizione</small></div><button class="ui-btn" data-act="waypoint" data-id="${p.id}">SEGUI</button></article>`).join('')}</div><div class="section-title">RICORDI TROVATI</div><p class="smallnote">${notes.map((n,i)=>state.found.includes(i)?`✓ ${n.name}`:'• Traccia inesplorata').join(' · ')}</p>`}
+function panelMap(){return `<p class="smallnote">La carta mostra l'intero territorio. La minimappa sullo schermo segue la tua posizione. Ogni luogo racconta una storia da scoprire, senza missioni obbligatorie.</p><canvas id="bigmap" width="900" height="675" aria-label="Carta geografica di SoLo, tocca per impostare una destinazione"></canvas><div class="map-info"><span>Foreste · Campagne · Città · Acque · Zone in rovina</span><span>Esplorazione libera</span></div><div class="row-actions" style="margin-top:12px"><button class="ui-btn alt" data-act="marker-clear">RIMUOVI SEGNAPOSTO</button></div><div class="section-title">REGIONI E STORIE</div><div class="guide-grid">${locations.map(p=>`<article class="journal-card"><div class="item-copy"><strong>${p.name}</strong><small>${p.story||'Un luogo da scoprire liberamente.'}</small><small>${Math.round(hypot(state.x,state.y,p.x,p.y))} m dalla tua posizione</small></div><button class="ui-btn" data-act="waypoint" data-id="${p.id}">SEGUI</button></article>`).join('')}</div><div class="section-title">TRACCE TROVATE</div><p class="smallnote">${notes.filter((n,i)=>state.found.includes(i)).map(n=>'✓ '+n.name).join(' · ')||'Nessuna traccia trovata. Esplora per scoprire le storie.'}</p>`}
 function panelGuide(){return `<div class="guide-grid"><article><h3>1. Sopravvivi</h3><p>Fame, sete e freddo possono portarti alla morte. Mangia dallo zaino, bevi acqua potabile, riposati e usa le bende se sei ferito. Correre consuma resistenza.</p></article><article><h3>2. Raccogli e cerca</h3><p>Premi E o ESAMINA vicino a rami secchi, cespugli, pietre, auto e porte delle case. Le scorte tornano dopo un giorno reale; le risorse naturali dopo pochi minuti.</p></article><article><h3>3. Accendi un fuoco</h3><p>Vai a un focolare: usa 3 legni e 1 pietra. Il fuoco dura 15 minuti reali e permette di cuocere carne e bollire l’acqua raccolta dai pozzi.</p></article><article><h3>4. Coltiva</h3><p>Avvicinati a un appezzamento di terra vicino al rifugio. Usa un seme e un’acqua potabile per piantare. Il raccolto cresce in circa due minuti, anche mentre esplori.</p></article><article><h3>5. Caccia e difenditi</h3><p>Animali selvatici percorrono la mappa: conigli e cervi fuggono, i lupi ti inseguono. Attacca col coltello, con la lancia, con l’ascia o con la pistola. Avvicinati agli animali abbattuti per recuperare carne e pelli.</p></article><article><h3>6. Equipaggiati</h3><p>In Inventario equipaggia giacche, pantaloni, scarponi, copricapo, zaino e un’arma. Le armi si usurano; la pistola richiede munizioni. Il commissariato può contenerne una.</p></article><article><h3>7. Giorno e notte</h3><p>La luce segue il vero orologio locale del dispositivo, con alba e tramonto stagionali calcolati per l’area di Salerno. Al buio usa la torcia oppure resta vicino al fuoco. Riposare non accelera l’ora reale.</p></article><article><h3>8. Controlli</h3><p>Smartphone: joystick, CORRI, ESAMINA e ATTACCA. PC: WASD/frecce, Shift, E, Spazio, I inventario, C crafting, G equipaggiamento, M mappa, H guida.</p></article></div><div class="paper-box"><strong>Salvataggio</strong><p>Salvataggio automatico locale: posizione, zaino, indumenti, coltivazioni, risorse e bottini. Non esistono account né acquisti. Se elimini i dati del browser perderai i progressi.</p><button class="ui-btn danger" data-act="newgame">AZZERA E RICOMINCIA</button></div>`}
 function updatePanel(){if(!panel)return;document.querySelector('.tabs').style.display=panel==='death'?'none':'';$('close').style.display=panel==='death'?'none':'';document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('selected',b.dataset.tab===panel));
  const titles={inventory:'Inventario',craft:'Crafting',equipment:'Equipaggiamento',map:'Mappa delle Terre',guide:'Guida alla sopravvivenza',death:'Un altro inizio'};$('panel-title').textContent=titles[panel]||'Sopravvivenza';
@@ -234,12 +222,12 @@ function drawLighting(){const sun=daylight(new Date()),dark=(1-sun)*.78;if(dark<
  lightCtx.setTransform(dpr,0,0,dpr,0,0);lightCtx.clearRect(0,0,vw,vh);lightCtx.fillStyle=`rgba(9,24,36,${dark})`;lightCtx.fillRect(0,0,vw,vh);lightCtx.globalCompositeOperation='destination-out';
  const torch=state.equipment.hand==='torch',radius=(torch?350:177)*Math.max(.72,zoom),sx=vw/2,sy=vh/2;
  const g=lightCtx.createRadialGradient(sx,sy,18,sx,sy,radius);g.addColorStop(0,'rgba(255,255,255,.98)');g.addColorStop(.35,'rgba(255,255,255,.84)');g.addColorStop(1,'rgba(255,255,255,0)');lightCtx.fillStyle=g;lightCtx.fillRect(sx-radius,sy-radius,radius*2,radius*2);
- for(const f of world){if(f.kind!=='camp'||!(state.fires[f.id]>Date.now()))continue;const x=(f.x-camX)*zoom+sx,y=(f.y-camY)*zoom+sy;if(x<-220||x>vw+220||y<-220||y>vh+220)continue;const radius=165*zoom,h=lightCtx.createRadialGradient(x,y,8,x,y,radius);h.addColorStop(0,'rgba(255,255,255,.95)');h.addColorStop(1,'rgba(255,255,255,0)');lightCtx.fillStyle=h;lightCtx.fillRect(x-radius,y-radius,radius*2,radius*2)}
+ for(const f of queryWorld(camX-vw/zoom,camY-vh/zoom,camX+vw/zoom,camY+vh/zoom)){if(f.kind!=='camp'||!(state.fires[f.id]>Date.now()))continue;const x=(f.x-camX)*zoom+sx,y=(f.y-camY)*zoom+sy;if(x<-220||x>vw+220||y<-220||y>vh+220)continue;const radius=165*zoom,h=lightCtx.createRadialGradient(x,y,8,x,y,radius);h.addColorStop(0,'rgba(255,255,255,.95)');h.addColorStop(1,'rgba(255,255,255,0)');lightCtx.fillStyle=h;lightCtx.fillRect(x-radius,y-radius,radius*2,radius*2)}
  lightCtx.globalCompositeOperation='source-over';ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(lightCanvas,0,0);ctx.restore();
 }
 function isSolid(x,y){const r=14;if(x<r||x>W-r||y<r||y>H-r||inWater(x,y))return true;
- for(const o of world){if(o.kind==='house'){const cx=clamp(x,o.x,o.x+o.w),cy=clamp(y,o.y,o.y+o.h);if(hypot(x,y,cx,cy)<r+2)return true}
- else if(o.kind==='tree'||o.kind==='deadTree'||o.kind==='car'||o.kind==='rock')if(hypot(x,y,o.x,o.y)<r+(o.kind==='car'?23:o.r*.5))return true}
+ for(const o of queryWorld(x-110,y-110,x+110,y+110)){if(o.kind==='house'){const cx=clamp(x,o.x,o.x+o.w),cy=clamp(y,o.y,o.y+o.h);if(hypot(x,y,cx,cy)<r+2)return true}
+ else if(['tree','deadTree','car','rock','landmark'].includes(o.kind)&&hypot(x,y,o.x,o.y)<r+(o.kind==='car'?23:o.kind==='landmark'?42:o.r*.5))return true}
  return false;
 }
 let running=false,playSeconds=(state.days||0)*86400,secondsSinceHud=0;
@@ -257,15 +245,15 @@ function update(dt,t){if(panel)return;let mx=stickVec.x+(keys.has('ArrowRight')|
  camX=lerp(camX,state.x,Math.min(1,dt*6.5));camY=lerp(camY,state.y,Math.min(1,dt*6.5));
  activeTarget=collectTarget();
  const a=$('interact');a.classList.toggle('active',!!activeTarget);$('interact-icon').textContent=activeTarget?'✦':'·';$('interact-label').textContent=activeTarget?targetVerb(activeTarget):'ESAMINA';$('proximity').textContent=activeTarget?targetTitle(activeTarget):'';
- secondsSinceHud+=dt;if(secondsSinceHud>.33){secondsSinceHud=0;updateHud()}
+ secondsSinceHud+=dt;if(secondsSinceHud>.33){secondsSinceHud=0;updateHud();if(state.x>=6400||state.y>=4800){const region=regionAt(state.x,state.y);if(lastRegion&&lastRegion!==region.id)notify(region.name+' — '+region.clue,6500);lastRegion=region.id;}else lastRegion='legacy';}
  if(toastingUntil&&t>toastingUntil){$('toast').classList.remove('show');toastingUntil=0}
 }
-function zoneAt(x,y){if(inCity(x,y))return'LA CITTÀ FANTASMA';if(inField(x,y))return'I CAMPI DI RUGGINE';if(inLake(x,y,lake)||inLake(x,y,pond)||pathDist(x,y,river)<160)return'LE ACQUE PERDUTE';if(woods(x,y)>.18)return'IL BOSCO DEL RITORNO';if(Math.min(roadDist(x,y),cityRoadDist(x,y))<80)return'LA STRADA DELLE CENERI';return'LE TERRE DEL SILENZIO'}
+function zoneAt(x,y){if(x>=6400||y>=4800)return regionAt(x,y).name;if(inCity(x,y))return'LA CITTÀ FANTASMA';if(inField(x,y))return'I CAMPI DI RUGGINE';if(inLake(x,y,lake)||inLake(x,y,pond)||pathDist(x,y,river)<160)return'LE ACQUE PERDUTE';if(woods(x,y)>.18)return'IL BOSCO DEL RITORNO';if(Math.min(roadDist(x,y),cityRoadDist(x,y))<80)return'LA STRADA DELLE CENERI';return'LE TERRE DEL SILENZIO'}
 function updateHud(){for(const id of ['health','hunger','thirst','stamina','warmth']){$('bar-'+id).style.width=`${state[id].toFixed(1)}%`;$('val-'+id).textContent=Math.round(state[id]);}
  $('zone').textContent=zoneAt(state.x,state.y);const now=new Date(),sun=daylight(now);$('clock').textContent=timeText(now);$('sunicon').textContent=sun>.65?'☀':sun>.12?'◒':'☾';$('dayname').textContent=sun>.65?'GIORNO':sun>.12?'CREPUSCOLO':'NOTTE';
 
 }
-let lastMini=0;function frameLoop(t){const dt=Math.min((t-last)/1000||0,.05);last=t;frame++;update(dt,t);drawScene(t);
+let lastRegion=null,lastMini=0;function frameLoop(t){const dt=Math.min((t-last)/1000||0,.05);last=t;frame++;update(dt,t);drawScene(t);
  // La maschera va applicata dopo il rendering del mondo, separatamente.
  drawLighting();if(t-lastMini>1100){mapDraw(mc,mini.width,mini.height);lastMini=t}
  if(frame%320===0)save();requestAnimationFrame(frameLoop);
