@@ -71,6 +71,23 @@ garantito. Per confronti successivi usare lo stesso test, più ripetizioni
 e annotare l'orario reale (che determina l'illuminazione giorno/notte).
 Non dichiarare target FPS o prestazioni iPhone da questi valori.
 
+## Esperimento controllato sulla dimensione delle tessere
+
+Dopo due misurazioni con tessere da **512 unità** è stata provata una
+dimensione di **768 unità**, mantenendo invariati renderer, scene, velocità
+di spostamento, geometria e budget di 24 MiB.
+
+| Configurazione | Run | Transizioni: FPS | P95 callback CPU | Tessere nuove | Corsa: FPS |
+|---|---|---:|---:|---:|---:|
+| 512 unità | #43738016366 | 57,3 | 26,1 ms | 78 | 60 |
+| 512 unità | #43738391530 | 56,2 | 31,9 ms | 78 | 60 |
+| 768 unità | #43738677026 | 58,4 | 20,7 ms | 45 | 60 |
+
+La riduzione delle tessere (78 → 45) è strutturale; il guadagno sul
+tempo p95 è **indicativo** e deve essere confermato su ulteriori esecuzioni.
+Conservare la configurazione da 768 soltanto se i test completi continuano
+a passare e le misure restano coerenti. Non trasferire questi FPS a iOS.
+
 ## Interpretazione
 
 Confrontare mediana e p95 sullo stesso ambiente e sullo stesso SHA. Eseguire
