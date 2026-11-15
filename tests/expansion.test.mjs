@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {createWorld,W,H} from '../src/world/world.js';
 import {REGIONS,MAP_WIDTH,MAP_HEIGHT,regionAt} from '../src/world/expansion.js';
 import {createSpatialIndex} from '../src/world/spatial.js';
+import {WORLD_STORY_NOTES} from '../src/shared/world-limits.js';
 import {initialState} from '../src/domain/index.js';
 
 test('grande territorio: almeno dodici volte l’area iniziale e undici regioni nuove',()=>{
@@ -12,7 +13,7 @@ test('grande territorio: almeno dodici volte l’area iniziale e undici regioni 
  const world=createWorld(initialState());
  assert.ok(world.world.length>3000);
  assert.equal(world.locations.length,18);
- assert.equal(world.notes.length,29);
+ assert.equal(world.notes.length,WORLD_STORY_NOTES);
  assert.equal(world.world.filter(o=>o.kind==='landmark').length,REGIONS.length);
  assert.ok(world.routes.length>=14);
  assert.ok(world.townGrids.length>=4);
