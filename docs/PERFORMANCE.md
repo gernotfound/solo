@@ -42,6 +42,35 @@ Il profiler inserisce un wrapper di RAF e una funzione di posizionamento
 **solo nella copia HTML in memoria usata per il test**: il codice pubblicato
 non espone comandi di teletrasporto o dati di profiling.
 
+
+## Misura iniziale — 15 novembre 2026
+
+Codice candidato \`9fb1d04fb5c114ebf52e067de8aab8b61a4cf22e\`;
+[GitHub Actions #43738016366](https://github.com/gernotfound/solo/actions/runs/43738016366),
+test Canonical Verification completato **SUCCESS**; l'artifact
+\`solo-browser-performance\` conserva le misure JSON.
+
+| Scenario | FPS da RAF | P95 intervallo RAF | P95 callback CPU | Tessere create durante misura |
+|---|---:|---:|---:|---:|
+| Campagna | 60,0 | 16,7 ms | 2,9 ms | 0 |
+| Città storica | 60,0 | 16,8 ms | 2,6 ms | 0 |
+| Centro industriale | 60,0 | 16,7 ms | 2,5 ms | 0 |
+| Corsa con Shift | 60,0 | 16,7 ms | 2,6 ms | 3 |
+| Cambi di regione sintetici | 57,3 | 16,8 ms | 26,1 ms | 78 |
+| Visuale mobile emulata | 60,0 | 16,7 ms | 1,9 ms | 0 |
+
+**Interpretazione circoscritta:** in questa esecuzione, i frame ordinari
+restano a 60 FPS, senza p95 CPU elevati. Le transizioni sintetiche sono
+il carico più costoso: generano numerose tessere nuove e occasionali
+callback lunghi. Non dimostrano che durante un normale spostamento
+regionale il giocatore incontri lo stesso rallentamento; la corsa
+reale non lo ha evidenziato.
+
+Un solo run su runner condiviso non stabilisce un livello prestazionale
+garantito. Per confronti successivi usare lo stesso test, più ripetizioni
+e annotare l'orario reale (che determina l'illuminazione giorno/notte).
+Non dichiarare target FPS o prestazioni iPhone da questi valori.
+
 ## Interpretazione
 
 Confrontare mediana e p95 sullo stesso ambiente e sullo stesso SHA. Eseguire
