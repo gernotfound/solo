@@ -51,5 +51,5 @@ test('luce reale: inverno/estate e notte, nel fuso orario di Roma',()=>{
 });
 test('salvataggio: campi ignoti, coordinate fuori mappa e riferimenti invaldi sanitizzati',()=>{
  const s=sanitizeState({version:2,x:9999999,y:-88,health:200,inventory:{pistol:-2,water:4,garbage:99999},equipment:{hand:'pistol',head:'knife'},found:[1,1,100]});
- assert.equal(s.x,22375);assert.equal(s.y,25);assert.equal(s.health,100);assert.deepEqual(s.inventory,{water:4});assert.equal(s.equipment.hand,null);assert.deepEqual(s.found,[1]);
+ assert.equal(s.x,22375);assert.equal(s.y,25);assert.equal(s.health,100);assert.deepEqual(s.inventory,{water:4});assert.equal(s.equipment.hand,null);assert.equal(Object.hasOwn(s,'found'),false);
 });

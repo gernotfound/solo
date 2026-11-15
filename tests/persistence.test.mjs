@@ -10,8 +10,8 @@ test('salvataggio SoLo: roundtrip zaino, equipaggiamento, colture e coordinate',
 test('sorgente precedente viene letta e non distrutta durante la migrazione',()=>{
  const previous=initialState();previous.x=2200;previous.inventory.beans=7;const store=storage({[LEGACY_KEYS[0]]:JSON.stringify(previous)});const next=loadState(store);assert.equal(next.x,2200);assert.equal(next.inventory.beans,7);assert.ok(store.peek(LEGACY_KEYS[0]));assert.equal(saveState(store,next),true);assert.ok(store.peek(SAVE_KEY));assert.ok(store.peek(LEGACY_KEYS[0]));
 });
-test('migrazione salvataggio esplorativo precedente conserva posizione, ricordi, segnaposto',()=>{
- const old={x:3000,y:1500,found:[0,2,2,100],marker:{x:3001,y:1501}};const store=storage({[LEGACY_KEYS[1]]:JSON.stringify(old)});const s=loadState(store);assert.equal(s.x,3000);assert.deepEqual(s.found,[0,2]);assert.deepEqual(s.marker,old.marker);
+test('migrazione salvataggio esplorativo conserva posizione e segnaposto ma ignora i vecchi collezionabili',()=>{
+ const old={x:3000,y:1500,found:[0,2,2,100],marker:{x:3001,y:1501}};const store=storage({[LEGACY_KEYS[1]]:JSON.stringify(old)});const s=loadState(store);assert.equal(s.x,3000);assert.equal(Object.hasOwn(s,'found'),false);assert.deepEqual(s.marker,old.marker);
 });
 test('salvataggi guasti e archiviazione non accessibile non impediscono l’avvio',()=>{
  const store=storage({[SAVE_KEY]:'{broken json'});assert.equal(loadState(store).version,2);
@@ -28,7 +28,7 @@ test('salvataggio in regioni ampliate conserva coordinate, segnaposto e nuove te
  const restored=loadState(store);
  assert.equal(restored.x,16000);assert.equal(restored.y,12600);
  assert.deepEqual(restored.marker,{x:20600,y:14200});
- assert.deepEqual(restored.found,[0,7,20,28]);
+ assert.equal(Object.hasOwn(restored,'found'),false);
  const corrupt={...s,x:999999999,y:-111,marker:{x:Infinity,y:1}};
  const checked=loadState(storage({[SAVE_KEY]:JSON.stringify(corrupt)}));
  assert.equal(checked.x,22375);assert.equal(checked.y,25);assert.equal(checked.marker,null);

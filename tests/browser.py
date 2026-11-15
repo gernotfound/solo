@@ -1,7 +1,7 @@
 """Real Chromium tests against the exact standalone build; navigation is not mocked.
 
 Run `npm run build` first. The browser uses a per-test localStorage substitute because
-about:blank does not expose persistent localStorage. This does not validate Cloudflare HTTP.
+about:blank does not expose persistent localStorage. This does not validate the public GitHub Pages HTTP endpoint.
 """
 from pathlib import Path
 import json
@@ -18,7 +18,7 @@ DEFAULT={
  'inventory':{'wood':3,'stone':2,'berry':4,'water':3,'can':1,'seed':4,'shirt':1,'pants':1,'boots':1,'knife':1,'bandage':2},
  'equipment':{'head':None,'body':'shirt','legs':'pants','feet':'boots','back':None,'hand':'knife'},
  'condition':{'knife':65},'looted':{},'harvested':{},'plots':{},'fires':{},'animals':{},
- 'marker':None,'found':[],'deathCount':0,'lastSave':0,
+ 'marker':None,'ground':[],'nextGroundId':1,'deathCount':0,'lastSave':0,
 }
 
 class BrowserTests(unittest.TestCase):
@@ -128,10 +128,39 @@ class BrowserTests(unittest.TestCase):
   page.click('#map-btn')
   self.assertTrue(page.locator('#bigmap').is_visible())
   self.assertGreaterEqual(page.locator('article.journal-card').count(),18)
-  self.assertIn('Le navi partirono senza equipaggio',page.locator('#panel-content').inner_text())
+  self.assertIn('Banchine, magazzini',page.locator('#panel-content').inner_text())
   page.locator('button[data-act="waypoint"][data-id="costa"]').click()
   saved=page.evaluate("JSON.parse(__store.get('solo-save-v1'))")
   self.assertEqual(saved['marker'],{'x':20600,'y':14200})
+  self.assertFalse(errors)
+
+ def test_dropped_objects_persist_and_can_be_picked_up_again(self):
+  page,errors=self.boot()
+  page.click('#bag-short')
+  page.locator('button[data-act="drop"][data-id="berry"]').click()
+  progress=page.evaluate('window.__survivalStatus')
+  self.assertEqual(progress['inventory']['berry'],3)
+  self.assertEqual(len(progress['ground']),1)
+  self.assertEqual(progress['ground'][0]['item'],'berry')
+  dropped=page.evaluate("JSON.parse(__store.get('solo-save-v1'))")
+  self.assertEqual(len(dropped['ground']),1)
+  self.assertFalse(errors)
+  page2,errors2=self.boot(dropped)
+  self.assertEqual(len(page2.evaluate('window.__survivalStatus.ground')),1)
+  page2.wait_for_timeout(350)
+  page2.click('#interact')
+  collected=page2.evaluate('window.__survivalStatus')
+  self.assertEqual(collected['inventory']['berry'],4)
+  self.assertEqual(collected['ground'],[])
+  self.assertFalse(errors2)
+
+ def test_legacy_memories_are_removed_without_resetting_inventory(self):
+  state={**DEFAULT,'found':[0,5,16],'inventory':{**DEFAULT['inventory'],'berry':12}}
+  page,errors=self.boot(state)
+  page.click('#map-btn')
+  self.assertEqual(page.locator('#panel-content').get_by_text('TRACCE TROVATE').count(),0)
+  saved=page.evaluate('window.__survivalStatus')
+  self.assertEqual(saved['inventory']['berry'],12)
   self.assertFalse(errors)
 
  def test_distant_region_and_local_minimap(self):

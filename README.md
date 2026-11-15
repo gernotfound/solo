@@ -1,8 +1,8 @@
 # SoLo
 
-Gioco cartoon post-apocalittico **sandbox**, dall’alto, per desktop e smartphone. **Nuovo atlante: 22.400 × 16.400 unità** con 18 luoghi narrativi, senza missioni obbligatorie. Nessuna missione o conclusione obbligatoria: il giocatore esplora, raccoglie, costruisce, coltiva, caccia e sopravvive al proprio ritmo.
+Gioco cartoon post-apocalittico **sandbox**, dall’alto, per desktop e smartphone. **Nuovo atlante: 22.400 × 16.400 unità** con 18 punti d'interesse ambientali, senza missioni obbligatorie. Nessuna missione o conclusione obbligatoria: il giocatore esplora, raccoglie, costruisce, coltiva, caccia e sopravvive al proprio ritmo.
 
-**Gioca:** https://gernotfound.github.io/solo/ (GitHub Pages; richiede l'attivazione iniziale nelle impostazioni della repository).
+**Gioca:** https://gernotfound.github.io/solo/ (GitHub Pages).
 
 ## Sviluppo
 
@@ -21,8 +21,12 @@ La repository GitHub `gernotfound/solo` è **l’unica fonte del codice** e GitH
 
 Vedi [ARCHITECTURE.md](docs/ARCHITECTURE.md) per contratti, struttura, dati persistiti e criterio di estensione.
 
-**Mondo:** [Atlante e regioni](docs/WORLD.md) — undici macroregioni aggiuntive, mappe locali, racconti ambientali e ricerca dei luoghi d'interesse.
+**Mondo:** [Atlante e regioni](docs/WORLD.md) — undici macroregioni aggiuntive, mappe locali, biomi differenziati e ricerca dei luoghi d'interesse.
 
 ## Pubblicazione
 
-La CI [Verify SoLo](.github/workflows/verify.yml) verifica le modifiche a `main`. Solo dopo una verifica positiva, [Publish SoLo](.github/workflows/pages.yml) compila i sorgenti e distribuisce `dist/index.html` su GitHub Pages. Alla prima attivazione, aprire **Settings → Pages → Build and deployment → Source: GitHub Actions**. È possibile ripetere manualmente la pubblicazione da **Actions → Publish SoLo to GitHub Pages → Run workflow**.
+La CI [Verify SoLo](.github/workflows/verify.yml) verifica le modifiche a `main`. Solo dopo una verifica positiva, [Publish SoLo](.github/workflows/pages.yml) compila i sorgenti e distribuisce `dist/index.html` su GitHub Pages. Pages è già attivo. È possibile ripetere manualmente la pubblicazione da **Actions → Publish SoLo to GitHub Pages → Run workflow**.
+
+## Mondo reattivo
+
+Gli oggetti lasciati dall'inventario compaiono sul terreno e possono essere raccolti anche dopo un riavvio. Auto, edifici, casse, cespugli e alberi mostrano visivamente se sono già stati perquisiti o raccolti. La figura del personaggio è ridisegnata in vista zenitale; il terreno ha dettagli coerenti con i biomi. Nessun sistema di ricordi collezionabili.

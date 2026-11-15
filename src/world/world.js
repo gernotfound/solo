@@ -34,15 +34,6 @@ const locations=[
  {x:2220,y:3820,name:'CAMPI DI RUGGINE',id:'fields'},
  {x:4870,y:730,name:'STAZIONE RADIO',id:'radio'},
 ];
-const notes=[
- {x:1240,y:3370,name:'Il distributore',text:'Una ricevuta dell’ultimo giorno.'},
- {x:740,y:1050,name:'La torre dei pini',text:'Il registro del guardaboschi.'},
- {x:3770,y:1630,name:'La scuola',text:'Un disegno infantile.'},
- {x:4900,y:2580,name:'Il quartiere muto',text:'Una foto senza data.'},
- {x:2260,y:3900,name:'Il frutteto',text:'Il quaderno delle semine.'},
- {x:4860,y:720,name:'L’antenna',text:'Una trasmissione incompleta.'},
- {x:5510,y:3020,name:'La tavola calda',text:'Il menù di ieri.'},
-];
 const world=[];const buildings=[],interactables=[],wildlife=[],ambient=[];let serial=0;
 function addWorld(o){o.id=o.id||`o${serial++}`;o.depth=o.kind==='house'?o.y+o.h:o.y+(o.r||12);world.push(o);if(o.kind==='house')buildings.push(o);if(['house','car','tree','deadTree','bush','rock','crate','camp','plot','well','berry','bed','cattails'].includes(o.kind))interactables.push(o);return o;}
 function segDist(px,py,a,b){const dx=b[0]-a[0],dy=b[1]-a[1],t=clamp(((px-a[0])*dx+(py-a[1])*dy)/(dx*dx+dy*dy||1),0,1);return Math.hypot(px-a[0]-t*dx,py-a[1]-t*dy)}
@@ -116,12 +107,12 @@ for(const p of locations){const data=originalStories[p.id];if(data){p.story=data
 legacyGeneration=false;
 townGrids.push(...EXTRA_TOWNS);
 waterBodies.push(...EXTRA_WATERS);
-buildExpansion({addWorld,blocked,forest,fields,routes,locations,notes,wildlife,savedState});
+buildExpansion({addWorld,blocked,forest,fields,routes,locations,wildlife,savedState});
 world.sort((a,b)=>a.depth-b.depth);
 const allObjects=createSpatialIndex(world);
 const allInteractive=createSpatialIndex(interactables);
 const allBuildings=createSpatialIndex(buildings);
-return {world,buildings,interactables,wildlife,ambient,random,rand,randInt,hash,forest,fields,lake,pond,waterBodies,townGrids,regions:REGIONS,regionAt,river,routes,gx,gy,locations,notes,segDist,pathDist,roadDist,cityRoadDist,woods,inCity,inField,inLake,inWater,blocked,
+return {world,buildings,interactables,wildlife,ambient,random,rand,randInt,hash,forest,fields,lake,pond,waterBodies,townGrids,regions:REGIONS,regionAt,river,routes,gx,gy,locations,segDist,pathDist,roadDist,cityRoadDist,woods,inCity,inField,inLake,inWater,blocked,
  queryWorld:(l,t,r,b)=>allObjects.query(l,t,r,b),
  queryInteractables:(l,t,r,b)=>allInteractive.query(l,t,r,b),
  queryBuildings:(l,t,r,b)=>allBuildings.query(l,t,r,b),
